@@ -25,7 +25,14 @@ button.primary{background:#e87522;color:white;border:0;padding:10px 16px;border-
 button.secondary{background:#173b63;color:white;border:0;padding:10px 16px;border-radius:8px;cursor:pointer}
 button.danger{background:#fee2e2;color:#991b1b;border:0;padding:7px 10px;border-radius:7px;cursor:pointer}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;border-bottom:1px solid #eee;text-align:left}th{color:#6b7280;font-weight:600}
+
+/* 修正表格在手機上被擠壓變形問題 */
+.table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}
+th,td{padding:10px 8px;border-bottom:1px solid #eee;text-align:left}
+th{color:#6b7280;font-weight:600}
+td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-all}
+
 .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e8f1fb;color:#173b63;font-size:12px;font-weight:bold}
 .empty{text-align:center;color:#9ca3af;padding:25px}
 .modal{display:none;position:fixed;inset:0;background:#0007;align-items:center;justify-content:center;padding:15px;z-index:10}
@@ -39,7 +46,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
 .quote-header h2{margin:0;font-size:24px;color:#173b63}
 .quote-meta{display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
 .quote-table{width:100%;border-collapse:collapse;margin-bottom:0;table-layout:fixed}
-.quote-table th,.quote-table td{border:1px solid #333;padding:4px 2px;text-align:center;font-size:14px;word-break:break-word;height:32px}
+.quote-table th,.quote-table td{border:1px solid #333;padding:4px 2px;text-align:center;font-size:14px;word-break:break-word;height:32px;white-space:normal}
 .quote-table input{border:none;background:transparent;padding:2px;text-align:center;width:100%;font-size:14px;height:100%}
 
 .quote-footer-box{border:1px solid #333;border-top:none;padding:8px 12px;font-size:13px;line-height:1.5}
@@ -47,13 +54,13 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
 .quote-terms{flex:3}
 .quote-agent{flex:1;text-align:left;padding-left:15px}
 .quote-summary-table{width:100%;border-collapse:collapse;margin-top:6px}
-.quote-summary-table td{border:1px solid #333;padding:6px;font-size:13px}
+.quote-summary-table td{border:1px solid #333;padding:6px;font-size:13px;white-space:normal}
 
 /* A4 列印優化（單頁緊湊版） */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm; /* 縮小邊距，避免上下留白太多 */
+    margin: 8mm;
   }
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
@@ -144,7 +151,6 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
         </div>
       </div>
 
-      <!-- 調整欄位寬度百分比：加大單位、單價、金額欄位，解決擁擠問題 -->
       <table class="quote-table">
         <thead>
           <tr style="background:#f2f2f2">
@@ -175,7 +181,6 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
         </tfoot>
       </table>
 
-      <!-- 自動下拉清單記憶庫 -->
       <datalist id="itemHistoryList"></datalist>
       <datalist id="specHistoryList"></datalist>
 
@@ -183,7 +188,6 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
         <button class="secondary" onclick="addQuoteRow()">＋ 新增品項欄位</button>
       </div>
 
-      <!-- 條款與經手人欄位 -->
       <div class="quote-footer-box">
         <div class="quote-footer-row">
           <div class="quote-terms">
@@ -198,7 +202,6 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
         </div>
       </div>
 
-      <!-- 工程總金額與訂金表格 -->
       <table class="quote-summary-table">
         <tr>
           <td style="width:50%">
@@ -227,7 +230,6 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
       </div>
     </div>
 
-    <!-- 歷史估價單紀錄列表 -->
     <div class="section no-print" style="max-width:850px;margin:25px auto 0 auto;">
       <h2>📋 歷史估價單列表（點擊可查看或修改）</h2>
       <div id="quoteHistoryList"></div>
@@ -282,7 +284,6 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
           <div><label>選擇工程</label><select id="wProject" required></select></div>
           <div>
             <label>人員姓名</label>
-            <!-- 加上 list 屬性並綁定點擊事件，確保點擊時立即彈出選單 -->
             <input id="wPerson" list="personHistoryList" placeholder="點擊選擇或直接輸入姓名" onclick="this.focus()" required>
             <datalist id="personHistoryList"></datalist>
           </div>
@@ -329,7 +330,7 @@ let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他'],
   historyItems: ['屋頂拆除', '屋頂鋼板', '鋼板水切', '口蓋', '中直', '水槽', '水管', '後面壁堵', '窗戶修邊', '吊車', '裝潢拆除含清運'],
   historySpecs: ['石棉瓦裝太空包', '鋁鋅0.5mmPU雙層', '鋁鋅0.5mm', '白鐵0.4mm', 'PVC管', '15T全吊+吊卡車', '三樓天花板'],
-  historyPersons: ['阿平', '阿強'], // 人員歷史名單
+  historyPersons: ['阿平', '阿強'],
   activeQuote: {
     date: today, address: '南園街127巷59號', name: '屋頂修繕工程', note: '項目包含石棉瓦裝太空包 不含清運',
     items: [
@@ -389,7 +390,6 @@ async function save() {
   }
 }
 
-/* 報價單畫面渲染 */
 function renderQuote() {
   if (!db.activeQuote) {
     db.activeQuote = { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 };
@@ -467,7 +467,6 @@ function calcQuoteTotal() {
   return total;
 }
 
-/* 儲存估價單數據 */
 function saveCurrentQuote() {
   syncCurrentQuoteFromForm();
   if (!db.quotesList) db.quotesList = [];
@@ -502,7 +501,6 @@ function syncCurrentQuoteFromForm() {
   db.activeQuote.depositPercent = document.getElementById('qDepositPercent').value;
 }
 
-/* 開立空白估價單 */
 function resetNewQuote() {
   currentQuoteId = null;
   db.activeQuote = {
@@ -515,7 +513,6 @@ function resetNewQuote() {
   renderQuote();
 }
 
-/* 載入歷史估價單 */
 function loadQuote(id) {
   let q = db.quotesList.find(x => x.id === id);
   if (q) {
@@ -527,7 +524,6 @@ function loadQuote(id) {
   }
 }
 
-/* 刪除歷史估價單 */
 function deleteQuote(id) {
   if (confirm('確定要刪除這筆估價單紀錄嗎？')) {
     db.quotesList = db.quotesList.filter(x => x.id !== id);
@@ -536,7 +532,6 @@ function deleteQuote(id) {
   }
 }
 
-/* 渲染歷史估價單列表 */
 function renderQuoteHistory() {
   let container = document.getElementById('quoteHistoryList');
   if (!db.quotesList || db.quotesList.length === 0) {
@@ -545,31 +540,32 @@ function renderQuoteHistory() {
   }
 
   container.innerHTML = `
-    <table>
-      <tr>
-        <th>日期</th>
-        <th>工程名稱 / 客戶</th>
-        <th>地點 / 地址</th>
-        <th>總金額</th>
-        <th>操作</th>
-      </tr>
-      ${db.quotesList.map(q => `
+    <div class="table-responsive">
+      <table>
         <tr>
-          <td>${q.date || '-'}</td>
-          <td><b>${esc(q.name || '未命名')}</b></td>
-          <td>${esc(q.address || '-')}</td>
-          <td><b>${money(q.totalAmount || 0)}</b></td>
-          <td>
-            <button class="secondary" onclick="loadQuote('${q.id}')">📂 載入</button>
-            <button class="danger" onclick="deleteQuote('${q.id}')">刪除</button>
-          </td>
+          <th>日期</th>
+          <th>工程名稱 / 客戶</th>
+          <th>地點 / 地址</th>
+          <th>總金額</th>
+          <th>操作</th>
         </tr>
-      `).join('')}
-    </table>
+        ${db.quotesList.map(q => `
+          <tr>
+            <td>${q.date || '-'}</td>
+            <td><b>${esc(q.name || '未命名')}</b></td>
+            <td class="wrap-col">${esc(q.address || '-')}</td>
+            <td><b>${money(q.totalAmount || 0)}</b></td>
+            <td>
+              <button class="secondary" onclick="loadQuote('${q.id}')">📂 載入</button>
+              <button class="danger" onclick="deleteQuote('${q.id}')">刪除</button>
+            </td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
   `;
 }
 
-/* 帶入轉為工程單 */
 function convertToProject() {
   syncCurrentQuoteFromForm();
   let totalAmount = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
@@ -617,56 +613,60 @@ function renderSelects() {
   c.innerHTML = db.categories.map(x => `<option>${esc(x)}</option>`).join('');
   c.value = old || db.categories[0];
 
-  // 渲染人員下拉選單選項
   if(!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
   const pList = document.getElementById('personHistoryList');
   pList.innerHTML = db.historyPersons.map(x => `<option value="${esc(x)}">`).join('');
 }
 
 function renderDashboard() {
-  const day = db.projects.filter(p => p.date === today).reduce((s, p) => s + p.amount, 0);
+  // 修正：正確計算今日「新增了幾筆工程案量（筆數）」
+  const dayCount = db.projects.filter(p => p.date === today).length;
+  
   const mPrefix = today.slice(0, 7);
   const mExp = sum(db.expenses.filter(x => x.date.startsWith(mPrefix)));
   const mW = sum(db.wages.filter(x => x.date.startsWith(mPrefix)));
   const mPay = sum(db.payments.filter(x => x.date.startsWith(mPrefix)));
 
   document.getElementById('cards').innerHTML = [
-    ['今日工程案量', day], ['本月已收款', mPay], ['本月支出', mExp],
-    ['本月工資', mW], ['本月淨利', mPay - mExp - mW],
-    ['進行中工程', db.projects.filter(p => p.status === '進行中').length],
-    ['總未收款', db.projects.reduce((s, p) => s + totals(p).remain, 0)]
-  ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num">${typeof x[1] === 'number' && x[0].includes('工程') ? x[1] + ' 筆' : money(x[1])}</div></div>`).join('');
+    ['今日工程案量', dayCount + ' 筆'],
+    ['本月已收款', money(mPay)],
+    ['本月支出', money(mExp)],
+    ['本月工資', money(mW)],
+    ['本月淨利', money(mPay - mExp - mW)],
+    ['進行中工程', db.projects.filter(p => p.status === '進行中').length + ' 筆'],
+    ['總未收款', money(db.projects.reduce((s, p) => s + totals(p).remain, 0))]
+  ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num">${x[1]}</div></div>`).join('');
 
   const active = db.projects.filter(p => p.status === '進行中');
   document.getElementById('dashProjects').innerHTML = active.length ? 
-    `<table><tr><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#e87522">${money(t.profit)}</b></td></tr>`; }).join('')}</table>` : '<div class="empty">目前沒有進行中工程</div>';
+    `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#e87522">${money(t.profit)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">目前沒有進行中工程</div>';
 
   const rec = db.projects.filter(p => totals(p).remain > 0);
   document.getElementById('dashReceivables').innerHTML = rec.length ?
-    `<table><tr><th>工程名稱</th><th>工程總額</th><th>已收款</th><th>未收款</th></tr>${rec.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.pa)}</td><td><b style="color:#d97706">${money(t.remain)}</b></td></tr>`; }).join('')}</table>` : '<div class="empty">所有工程皆已結清無未收款</div>';
+    `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工程總額</th><th>已收款</th><th>未收款</th></tr>${rec.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.pa)}</td><td><b style="color:#d97706">${money(t.remain)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">所有工程皆已結清無未收款</div>';
 }
 
 function renderProjects() {
   document.getElementById('projectList').innerHTML = db.projects.length ?
-    `<table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${db.projects.map(p => {
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${db.projects.map(p => {
       let t = totals(p);
-      return `<tr><td>${p.date}</td><td><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b>${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
-    }).join('')}</table>` : '<div class="empty">尚無工程紀錄</div>';
+      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b>${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
+    }).join('')}</table></div>` : '<div class="empty">尚無工程紀錄</div>';
 }
 
 function renderExpenses() {
   document.getElementById('expenseList').innerHTML = db.expenses.length ?
-    `<table><tr><th>日期</th><th>工程名稱</th><th>項目</th><th>金額</th><th>備註</th><th>操作</th></tr>${db.expenses.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><span class="pill">${esc(x.category)}</span></td><td>${money(x.amount)}</td><td>${esc(x.note || '-')}</td><td><button class="danger" onclick="del('expenses',${x.id})">刪除</button></td></tr>`).join('')}</table>` : '<div class="empty">尚無支出紀錄</div>';
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>項目</th><th>金額</th><th>備註</th><th>操作</th></tr>${db.expenses.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><span class="pill">${esc(x.category)}</span></td><td>${money(x.amount)}</td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('expenses',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無支出紀錄</div>';
 }
 
 function renderWages() {
   document.getElementById('wageList').innerHTML = db.wages.length ?
-    `<table><tr><th>日期</th><th>工程名稱</th><th>人員</th><th>工資金額</th><th>操作</th></tr>${db.wages.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${esc(x.person)}</b></td><td>${money(x.amount)}</td><td><button class="danger" onclick="del('wages',${x.id})">刪除</button></td></tr>`).join('')}</table>` : '<div class="empty">尚無工資紀錄</div>';
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>人員</th><th>工資金額</th><th>操作</th></tr>${db.wages.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${esc(x.person)}</b></td><td>${money(x.amount)}</td><td><button class="danger" onclick="del('wages',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無工資紀錄</div>';
 }
 
 function renderPayments() {
   document.getElementById('paymentList').innerHTML = db.payments.length ?
-    `<table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>備註</th><th>操作</th></tr>${db.payments.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td>${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table>` : '<div class="empty">尚無收款紀錄</div>';
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>備註</th><th>操作</th></tr>${db.payments.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
 }
 
 function uid() { return Date.now() + Math.random().toString().slice(2,6); }
@@ -731,7 +731,6 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-  document.getElementById(b.dataset.page).classList.active;
   document.getElementById(b.dataset.page).classList.add('active');
 });
 
@@ -751,7 +750,6 @@ document.getElementById('wageForm').onsubmit = e => {
   
   db.wages.push({ id: uid(), projectId: +wProject.value, person: personName, amount: +wAmount.value, date: wDate.value });
   
-  // 自動將薪資人員記憶入歷史庫
   if (!db.historyPersons) db.historyPersons = [];
   if (personName && !db.historyPersons.includes(personName)) {
     db.historyPersons.push(personName);
