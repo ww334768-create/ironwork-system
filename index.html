@@ -111,7 +111,8 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
   <!-- 首頁 -->
   <section id="dashboard" class="page active">
-    <div class="section" style="margin-top:0">
+    <!-- 加上 margin-bottom 增加與下方卡片的距離 -->
+    <div class="section" style="margin-top:0; margin-bottom:18px;">
       <div class="actions" style="margin-top:0">
         <button class="secondary" onclick="exportData()">⬇ 備份系統資料</button>
         <button class="primary" onclick="document.getElementById('importFile').click()">⬆ 還原資料</button>
@@ -342,7 +343,6 @@ let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   }
 };
 
-// 輔助函式：按照日期由新到舊排序
 function sortByDateDesc(arr) {
   return [...arr].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 }
