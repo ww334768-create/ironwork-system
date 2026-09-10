@@ -9,7 +9,7 @@
 header{background:linear-gradient(135deg,#173b63,#e87522);color:white;padding:22px 28px}
 header h1{margin:0 0 5px;font-size:25px} header p{margin:0;opacity:.9}
 nav{display:flex;gap:8px;padding:12px 18px;background:white;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5;overflow:auto}
-nav button{border:0;background:#eef2f7;padding:10px 16px;border-radius:9px;cursor:pointer;white-space:nowrap;font-size:15px}
+nav button{border:0;background:#eef2f7;padding:10px 16px;border-radius:99px;cursor:pointer;white-space:nowrap;font-size:15px}
 nav button.active{background:#173b63;color:white;font-weight:bold}
 main{max-width:1200px;margin:auto;padding:22px}
 .page{display:none}.page.active{display:block}
@@ -45,15 +45,34 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;
 .quote-footer p{margin:4px 0}
 .signature-box{display:flex;justify-content:space-between;margin-top:30px;padding-top:10px}
 
-/* 列印 PDF 設定 */
+/* 列印專用控制（修復底色與輸入框） */
 @media print {
   header, nav, .actions, .sync-status, .no-print, button, .danger { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
-  body { background: white; }
-  .section, .quote-paper { box-shadow: none; padding: 0; }
-  .quote-table input { border: none; }
+  body { background: white; -webkit-print-color-adjust: exact; }
+  .section, .quote-paper { box-shadow: none; padding: 0; margin: 0; }
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
+  
+  /* 去除輸入框底色、黃底與邊框 */
+  input, select, textarea {
+    border: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 !important;
+    -webkit-appearance: none;
+  }
+  
+  /* 列印時隱藏 placeholder 提示字眼 */
+  input::placeholder {
+    color: transparent !important;
+  }
+  
+  .quote-table td input {
+    text-align: center;
+  }
 }
 
 @media(max-width:600px){main{padding:12px}.section{padding:15px}th,td{padding:8px 4px;font-size:13px}.quote-paper{padding:15px}}
@@ -130,9 +149,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;
             <th style="width:8%" class="no-print">操作</th>
           </tr>
         </thead>
-        <tbody id="quoteItems">
-          <!-- 動態渲染品項列表 -->
-        </tbody>
+        <tbody id="quoteItems"></tbody>
         <tfoot>
           <tr>
             <td colspan="6" style="text-align:right;font-weight:bold;font-size:16px">工程總金額：</td>
@@ -141,6 +158,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;
           </tr>
         </tfoot>
       </table>
+
+      <!-- 自動下拉清單記憶庫 -->
+      <datalist id="itemHistoryList"></datalist>
+      <datalist id="specHistoryList"></datalist>
 
       <div class="no-print" style="margin-bottom:15px">
         <button class="secondary" onclick="addQuoteRow()">＋ 新增品項</button>
@@ -249,16 +270,10 @@ const today = new Date().toISOString().split('T')[0];
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [{ id: 1, date: today, address: '臺南市安南區溪東里府安路五段119巷28號', name: '溪東里府安路工程', amount: 43000, status: '進行中' }],
-  expenses: [
-    { id: 1, projectId: 1, category: '料錢', amount: 9800, date: today, note: '' },
-    { id: 2, projectId: 1, category: '吊車', amount: 2500, date: today, note: '' }
-  ],
-  wages: [
-    { id: 1, projectId: 1, person: '平', amount: 3700, date: today },
-    { id: 2, projectId: 1, person: '瑞', amount: 4500, date: today }
-  ],
-  payments: [],
+  expenses: [], wages: [], payments: [],
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他'],
+  historyItems: ['屋頂拆除', '屋頂鋼板', '鋼板水切', '口蓋', '中直', '水槽', '水管', '後面壁堵', '窗戶修邊', '吊車', '裝潢拆除含清運'],
+  historySpecs: ['石棉瓦裝太空包', '鋁鋅0.5mmPU雙層', '鋁鋅0.5mm', '白鐵0.4mm', 'PVC管', '15T全吊+吊卡車', '三樓天花板'],
   quote: {
     date: today, address: '南園街127巷59號', name: '屋頂修繕工程',
     items: [
@@ -314,13 +329,18 @@ async function save() {
   }
 }
 
-/* 估價單邏輯 */
 function renderQuote() {
   if (!db.quote) db.quote = { date: today, address: '', name: '', items: [] };
+  if (!db.historyItems) db.historyItems = [];
+  if (!db.historySpecs) db.historySpecs = [];
+
   document.getElementById('qDate').value = db.quote.date || today;
   document.getElementById('qAddress').value = db.quote.address || '';
   document.getElementById('qName').value = db.quote.name || '';
   document.getElementById('qAgent').value = db.quote.agent || '';
+
+  document.getElementById('itemHistoryList').innerHTML = db.historyItems.map(x => `<option value="${esc(x)}">`).join('');
+  document.getElementById('specHistoryList').innerHTML = db.historySpecs.map(x => `<option value="${esc(x)}">`).join('');
 
   const tbody = document.getElementById('quoteItems');
   tbody.innerHTML = '';
@@ -332,12 +352,12 @@ function renderQuote() {
     let tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${idx + 1}</td>
-      <td><input value="${esc(item.name || '')}" oninput="updateQuoteItem(${idx}, 'name', this.value)"></td>
-      <td><input value="${esc(item.spec || '')}" oninput="updateQuoteItem(${idx}, 'spec', this.value)"></td>
-      <td><input type="number" step="any" value="${item.qty || ''}" oninput="updateQuoteItem(${idx}, 'qty', this.value)"></td>
-      <td><input value="${esc(item.unit || '')}" oninput="updateQuoteItem(${idx}, 'unit', this.value)"></td>
-      <td><input type="number" value="${item.price || ''}" oninput="updateQuoteItem(${idx}, 'price', this.value)"></td>
-      <td style="font-weight:bold">$${Number(item.total || 0).toLocaleString()}</td>
+      <td><input list="itemHistoryList" value="${esc(item.name || '')}" onchange="updateQuoteItem(${idx}, 'name', this.value)"></td>
+      <td><input list="specHistoryList" value="${esc(item.spec || '')}" onchange="updateQuoteItem(${idx}, 'spec', this.value)"></td>
+      <td><input type="number" step="any" value="${item.qty || ''}" onchange="updateQuoteItem(${idx}, 'qty', this.value)"></td>
+      <td><input value="${esc(item.unit || '')}" onchange="updateQuoteItem(${idx}, 'unit', this.value)"></td>
+      <td><input type="number" value="${item.price || ''}" onchange="updateQuoteItem(${idx}, 'price', this.value)"></td>
+      <td id="rowTotal_${idx}" style="font-weight:bold">$${Number(item.total || 0).toLocaleString()}</td>
       <td class="no-print"><button class="danger" onclick="removeQuoteRow(${idx})">刪</button></td>
     `;
     tbody.appendChild(tr);
@@ -347,9 +367,14 @@ function renderQuote() {
 
 function updateQuoteItem(idx, key, val) {
   let item = db.quote.items[idx];
-  item[key] = key === 'qty' || key === 'price' ? parseFloat(val) || 0 : val;
+  item[key] = (key === 'qty' || key === 'price') ? parseFloat(val) || 0 : val;
   item.total = (item.qty || 0) * (item.price || 0);
-  renderQuote();
+
+  if (key === 'name' && val.trim() && !db.historyItems.includes(val.trim())) db.historyItems.push(val.trim());
+  if (key === 'spec' && val.trim() && !db.historySpecs.includes(val.trim())) db.historySpecs.push(val.trim());
+
+  document.getElementById(`rowTotal_${idx}`).textContent = '$' + Number(item.total).toLocaleString();
+  calcQuoteTotal();
 }
 
 function addQuoteRow() {
@@ -375,7 +400,7 @@ function saveQuote() {
   db.quote.name = document.getElementById('qName').value;
   db.quote.agent = document.getElementById('qAgent').value;
   save();
-  alert('估價單已成功儲存並同步至雲端！');
+  alert('估價單已成功儲存！');
 }
 
 function convertToProject() {
@@ -395,7 +420,6 @@ function convertToProject() {
     });
     save();
     alert('已成功轉為工程單！');
-    // 自動切換到工程頁面
     document.querySelector('button[data-page="projects"]').click();
   }
 }
@@ -481,7 +505,7 @@ function del(type, n) {
 }
 
 function addCategory() {
-  let x = prompt('請輸入新的支出項目名稱（例如：場地費、認證費）：');
+  let x = prompt('請輸入新的支出項目名稱：');
   if (x && x.trim()) {
     if (!db.categories.includes(x.trim())) db.categories.push(x.trim());
     save();
@@ -530,7 +554,6 @@ function importData(ev) {
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
 
-// 頁面切換事件
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
@@ -538,7 +561,6 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.getElementById(b.dataset.page).classList.add('active');
 });
 
-// 表單送出事件
 document.getElementById('projectForm').onsubmit = e => {
   e.preventDefault();
   db.projects.push({ id: uid(), date: pDate.value, address: pAddress.value, name: pName.value, amount: +pAmount.value, status: pStatus.value });
