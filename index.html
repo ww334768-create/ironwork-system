@@ -193,7 +193,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div class="quote-terms">
             <div>1. 本估價單有效期間 <input id="qValidDays" type="number" value="7" style="width:40px;text-align:center"> 天。</div>
             <div>2. 如蒙惠顧請先付訂金 <input id="qDepositPercent" type="number" value="3" style="width:40px;text-align:center"> 成。</div>
-            <div>3. 收款方式：簽約請付三分之一訂金，現場入料施工三分之一，完工後驗收收尾款（銅骨工程內，不含全部工程完工）。</div>
+            <div>3. 收款方式：簽約請付三分之一訂金，現場入料施工三分之一，完工後驗收收尾款（鋼骨工程內，不含全部工程完工）。</div>
             <div>4. 依估價單項目為主，如有增加另計。</div>
           </div>
           <div class="quote-agent">
@@ -250,7 +250,15 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div><label>工程地址</label><input id="pAddress" placeholder="例如：臺南市安南區..." required></div>
           <div><label>客戶／工程名稱</label><input id="pName" placeholder="例如：府安路鐵皮屋工程" required></div>
           <div><label>工程總金額</label><input id="pAmount" type="number" min="0" placeholder="43000" required></div>
-          <div><label>工程狀態</label><select id="pStatus"><option>進行中</option><option>已完成</option><option>暫停</option></select></div>
+          <div>
+            <label>工程狀態</label>
+            <select id="pStatus">
+              <option>進行中</option>
+              <option>已完成</option>
+              <option>已收款完成</option>
+              <option>暫停</option>
+            </select>
+          </div>
         </div>
         <div class="actions"><button class="primary" id="btnProject">＋ 新增工程</button></div>
       </form>
@@ -780,20 +788,40 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 document.getElementById('projectForm').onsubmit = e => {
   e.preventDefault();
   let editId = document.getElementById('editingProjectId').value;
+  let newAmount = +pAmount.value;
+  let newStatus = pStatus.value;
+  let targetProjectId;
   
   if (editId) {
     let p = db.projects.find(x => x.id == editId);
     if (p) {
+      targetProjectId = p.id;
       p.date = pDate.value;
       p.address = pAddress.value;
       p.name = pName.value;
-      p.amount = +pAmount.value;
-      p.status = pStatus.value;
+      p.amount = newAmount;
+      p.status = newStatus;
     }
     alert('工程資料已成功更新！');
   } else {
-    db.projects.push({ id: uid(), date: pDate.value, address: pAddress.value, name: pName.value, amount: +pAmount.value, status: pStatus.value });
+    targetProjectId = uid();
+    db.projects.push({ id: targetProjectId, date: pDate.value, address: pAddress.value, name: pName.value, amount: newAmount, status: newStatus });
     alert('已成功新增工程！');
+  }
+  
+  // 如果設定為「已收款完成」，自動幫忙補上或補足結清的收款紀錄
+  if (newStatus === '已收款完成') {
+    let currentPaid = sum(db.payments.filter(x => x.projectId == targetProjectId));
+    let remaining = newAmount - currentPaid;
+    if (remaining > 0) {
+      db.payments.push({
+        id: uid(),
+        projectId: targetProjectId,
+        amount: remaining,
+        date: pDate.value || today,
+        note: '狀態改為已收款完成自動結清'
+      });
+    }
   }
   
   resetProjectForm();
@@ -805,6 +833,7 @@ document.getElementById('expenseForm').onsubmit = e => {
   db.expenses.push({ id: uid(), projectId: +eProject.value, category: eCategory.value, amount: +eAmount.value, date: eDate.value, note: eNote.value });
   e.target.reset(); eDate.value = today; save();
 };
+
 document.getElementById('wageForm').onsubmit = e => {
   e.preventDefault();
   let personName = wPerson.value.trim();
@@ -818,9 +847,22 @@ document.getElementById('wageForm').onsubmit = e => {
 
   e.target.reset(); wDate.value = today; save();
 };
+
 document.getElementById('paymentForm').onsubmit = e => {
   e.preventDefault();
-  db.payments.push({ id: uid(), projectId: +payProject.value, amount: +payAmount.value, date: payDate.value, note: payNote.value });
+  let pId = +payProject.value;
+  let payAmt = +payAmount.value;
+  db.payments.push({ id: uid(), projectId: pId, amount: payAmt, date: payDate.value, note: payNote.value });
+  
+  // 自動檢查該工程是否已收齊款項，若收齊則將工程狀態改為「已收款完成」
+  let p = db.projects.find(x => x.id == pId);
+  if (p) {
+    let totalPaid = sum(db.payments.filter(x => x.projectId == pId));
+    if (totalPaid >= p.amount) {
+      p.status = '已收款完成';
+    }
+  }
+
   e.target.reset(); payDate.value = today; save();
 };
 
