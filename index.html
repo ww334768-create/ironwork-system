@@ -1,95 +1,383 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>跨手機即時同步頁面</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; background: #f4f6f8; }
-    h2 { color: #333; text-align: center; margin-bottom: 20px; }
-    .input-box { display: flex; gap: 10px; margin-bottom: 20px; }
-    input { flex: 1; padding: 12px 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none; }
-    input:focus { border-color: #007bff; }
-    button { padding: 12px 20px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-    button:disabled { background-color: #aaa; }
-    ul { list-style: none; padding: 0; margin: 0; }
-    li { background: white; padding: 14px 16px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 16px; word-break: break-all; }
-    .status { text-align: center; color: #666; margin-top: 10px; font-size: 14px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>鐵工工程管理系統</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Noto Sans TC",sans-serif;background:#f4f6f8;color:#1f2937}
+header{background:linear-gradient(135deg,#173b63,#e87522);color:white;padding:22px 28px}
+header h1{margin:0 0 5px;font-size:25px} header p{margin:0;opacity:.9}
+nav{display:flex;gap:8px;padding:12px 18px;background:white;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5;overflow:auto}
+nav button{border:0;background:#eef2f7;padding:10px 16px;border-radius:9px;cursor:pointer;white-space:nowrap;font-size:15px}
+nav button.active{background:#173b63;color:white;font-weight:bold}
+main{max-width:1200px;margin:auto;padding:22px}
+.page{display:none}.page.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.card{background:white;border-radius:14px;padding:18px;box-shadow:0 2px 9px #0000000d}
+.card .label{font-size:14px;color:#6b7280}.card .num{font-size:24px;font-weight:700;margin-top:8px;color:#173b63}
+.section{background:white;border-radius:14px;padding:20px;margin-top:18px;box-shadow:0 2px 9px #0000000d}
+.section h2{font-size:19px;margin:0 0 16px;color:#173b63}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+label{font-size:13px;color:#4b5563;display:block;margin-bottom:5px;font-weight:bold}
+input,select,textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;background:white}
+button.primary{background:#e87522;color:white;border:0;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:bold}
+button.secondary{background:#173b63;color:white;border:0;padding:10px 16px;border-radius:8px;cursor:pointer}
+button.danger{background:#fee2e2;color:#991b1b;border:0;padding:7px 10px;border-radius:7px;cursor:pointer}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;border-bottom:1px solid #eee;text-align:left}th{color:#6b7280;font-weight:600}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e8f1fb;color:#173b63;font-size:12px;font-weight:bold}
+.empty{text-align:center;color:#9ca3af;padding:25px}
+.modal{display:none;position:fixed;inset:0;background:#0007;align-items:center;justify-content:center;padding:15px;z-index:10}
+.modal.show{display:flex}.modalbox{background:white;border-radius:14px;max-width:700px;width:100%;max-height:90vh;overflow:auto;padding:22px}
+.small{font-size:12px;color:#6b7280}
+.sync-status{background:#e0f2fe;color:#0369a1;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;justify-content:space-between;}
+@media(max-width:600px){main{padding:12px}.section{padding:15px}th,td{padding:8px 4px;font-size:13px}}
+</style>
 </head>
 <body>
+<header>
+  <h1>🏗️ 鐵工工程管理系統</h1>
+  <p>工程、支出、工資、收款與損益一站管理 (☁️ 雲端同步版)</p>
+</header>
 
-  <h2>📱 跨手機同步清單</h2>
+<nav id="nav">
+  <button data-page="dashboard" class="active">首頁儀表板</button>
+  <button data-page="projects">工程管理</button>
+  <button data-page="expenses">工程支出</button>
+  <button data-page="wages">人員工資</button>
+  <button data-page="payments">客戶收款</button>
+</nav>
 
-  <div class="input-box">
-    <input type="text" id="userInput" placeholder="請輸入要新增的內容...">
-    <button id="sendBtn" onclick="addData()">新增</button>
+<main>
+  <div id="syncStatus" class="sync-status">
+    <span id="syncText">☁️ 雲端同步狀態：資料讀取中...</span>
+    <button class="secondary" style="padding:4px 8px;font-size:12px" onclick="loadCloudData()">🔄 手動整理同步</button>
   </div>
 
-  <div id="status" class="status">正在讀取雲端資料...</div>
-  <ul id="dataList"></ul>
+  <!-- 首頁 -->
+  <section id="dashboard" class="page active">
+    <div class="section" style="margin-top:0">
+      <div class="actions" style="margin-top:0">
+        <button class="secondary" onclick="exportData()">⬇ 備份系統資料</button>
+        <button class="primary" onclick="document.getElementById('importFile').click()">⬆ 還原資料</button>
+        <input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+      <div class="small" style="margin-top:8px">💡 提示：本系統已連接雲端資料庫，新增資料將自動跨手機與電腦即時同步！</div>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="section"><h2>進行中工程概況</h2><div id="dashProjects"></div></div>
+    <div class="section"><h2>未收款工程</h2><div id="dashReceivables"></div></div>
+  </section>
 
-  <script>
-    // 你的專屬 Google Sheet API 連結
-    const API_URL = "https://script.google.com/macros/s/AKfycbxsly23moU4OMHkphFlWw3jYUKsoCusS1-DE2j7sN-nvTGMTG_HV7TfAOPxxz7vbSr9/exec";
+  <!-- 工程管理 -->
+  <section id="projects" class="page">
+    <div class="section">
+      <h2>新增工程資料</h2>
+      <form id="projectForm">
+        <div class="grid">
+          <div><label>日期</label><input id="pDate" type="date" required></div>
+          <div><label>工程地址</label><input id="pAddress" placeholder="例如：臺南市安南區..." required></div>
+          <div><label>客戶／工程名稱</label><input id="pName" placeholder="例如：府安路鐵皮屋工程" required></div>
+          <div><label>工程總金額</label><input id="pAmount" type="number" min="0" placeholder="43000" required></div>
+          <div><label>工程狀態</label><select id="pStatus"><option>進行中</option><option>已完成</option><option>暫停</option></select></div>
+        </div>
+        <div class="actions"><button class="primary" id="btnProject">＋ 新增工程</button></div>
+      </form>
+    </div>
+    <div class="section"><h2>工程列表</h2><div id="projectList"></div></div>
+  </section>
 
-    // 1. 讀取資料
-    async function loadData() {
-      try {
-        const res = await fetch(API_URL);
-        const data = await res.json();
-        const list = document.getElementById("dataList");
-        list.innerHTML = "";
-        
-        // 讓最新新增的顯示在最上面
-        data.reverse().forEach(item => {
-          if (item.content) {
-            let li = document.createElement("li");
-            li.textContent = item.content;
-            list.appendChild(li);
+  <!-- 支出管理 -->
+  <section id="expenses" class="page">
+    <div class="section">
+      <h2>新增工程支出</h2>
+      <form id="expenseForm">
+        <div class="grid">
+          <div><label>選擇工程</label><select id="eProject" required></select></div>
+          <div><label>支出項目</label><select id="eCategory"></select></div>
+          <div><label>金額</label><input id="eAmount" type="number" min="0" required></div>
+          <div><label>日期</label><input id="eDate" type="date" required></div>
+          <div><label>備註</label><input id="eNote" placeholder="例如：廠商名稱或材料規格"></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="addCategory()">＋ 自訂新增支出項目</button>
+          <button class="primary" id="btnExpense">新增支出紀錄</button>
+        </div>
+      </form>
+    </div>
+    <div class="section"><h2>支出紀錄列表</h2><div id="expenseList"></div></div>
+  </section>
+
+  <!-- 工資管理 -->
+  <section id="wages" class="page">
+    <div class="section">
+      <h2>新增人員工資</h2>
+      <form id="wageForm">
+        <div class="grid">
+          <div><label>選擇工程</label><select id="wProject" required></select></div>
+          <div><label>人員姓名</label><input id="wPerson" placeholder="例如：阿平" required></div>
+          <div><label>工資金額</label><input id="wAmount" type="number" min="0" required></div>
+          <div><label>日期</label><input id="wDate" type="date" required></div>
+        </div>
+        <div class="actions"><button class="primary" id="btnWage">新增工資紀錄</button></div>
+      </form>
+    </div>
+    <div class="section"><h2>工資紀錄列表</h2><div id="wageList"></div></div>
+  </section>
+
+  <!-- 收款管理 -->
+  <section id="payments" class="page">
+    <div class="section">
+      <h2>新增客戶收款</h2>
+      <form id="paymentForm">
+        <div class="grid">
+          <div><label>選擇工程</label><select id="payProject" required></select></div>
+          <div><label>收款金額</label><input id="payAmount" type="number" min="0" required></div>
+          <div><label>日期</label><input id="payDate" type="date" required></div>
+          <div><label>備註</label><input id="payNote" placeholder="例如：訂金、尾款、訂金支票"></div>
+        </div>
+        <div class="actions"><button class="primary" id="btnPayment">新增收款紀錄</button></div>
+      </form>
+    </div>
+    <div class="section"><h2>收款紀錄列表</h2><div id="paymentList"></div></div>
+  </section>
+</main>
+
+<div class="modal" id="detailModal"><div class="modalbox" id="detailBox"></div></div>
+
+<script>
+// API 雲端資料庫連結
+const API_URL = "https://script.google.com/macros/s/AKfycbxsly23moU4OMHkphFlWw3jYUKsoCusS1-DE2j7sN-nvTGMTG_HV7TfAOPxxz7vbSr9/exec";
+const KEY = 'iron_work_system_data';
+const today = new Date().toISOString().split('T')[0];
+
+// 預設本機資料庫
+let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
+  projects: [{ id: 1, date: today, address: '臺南市安南區溪東里府安路五段119巷28號', name: '溪東里府安路工程', amount: 43000, status: '進行中' }],
+  expenses: [
+    { id: 1, projectId: 1, category: '料錢', amount: 9800, date: today, note: '' },
+    { id: 2, projectId: 1, category: '吊車', amount: 2500, date: today, note: '' }
+  ],
+  wages: [
+    { id: 1, projectId: 1, person: '平', amount: 3700, date: today },
+    { id: 2, projectId: 1, person: '瑞', amount: 4500, date: today }
+  ],
+  payments: [],
+  categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他']
+};
+
+// 從 Google 雲端載入最新資料
+async function loadCloudData() {
+  const statusEl = document.getElementById('syncText');
+  statusEl.textContent = '☁️ 雲端同步中，正在讀取最新資料...';
+  try {
+    const res = await fetch(API_URL);
+    const cloudData = await res.json();
+    if (cloudData && cloudData.length > 0) {
+      // 尋找最新的有效雲端備份
+      for (let i = cloudData.length - 1; i >= 0; i--) {
+        try {
+          let parsed = JSON.parse(cloudData[i].content);
+          if (parsed && parsed.projects) {
+            db = parsed;
+            localStorage.setItem(KEY, JSON.stringify(db));
+            statusEl.textContent = '✅ 雲端同步完成！已連線最新數據。';
+            render();
+            return;
           }
-        });
-        document.getElementById("status").style.display = "none";
-      } catch (err) {
-        document.getElementById("status").textContent = "載入資料失敗，請重新整理頁面";
+        } catch(e) {}
       }
     }
+    statusEl.textContent = '✅ 已連接雲端資料庫。';
+  } catch (err) {
+    statusEl.textContent = '⚠️ 雲端連線失敗，目前顯示離線暫存資料。';
+  }
+}
 
-    // 2. 新增資料
-    async function addData() {
-      const input = document.getElementById("userInput");
-      const btn = document.getElementById("sendBtn");
-      const status = document.getElementById("status");
-      const content = input.value.trim();
-      
-      if (!content) return;
+// 儲存資料並推送到雲端
+async function save() {
+  localStorage.setItem(KEY, JSON.stringify(db));
+  render();
+  
+  const statusEl = document.getElementById('syncText');
+  statusEl.textContent = '⏳ 正在將新變更同步至雲端...';
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ content: JSON.stringify(db) })
+    });
+    statusEl.textContent = '✅ 異動已成功同步至雲端！';
+  } catch (err) {
+    statusEl.textContent = '⚠️ 雲端同步失敗，資料已先存於本機。';
+  }
+}
 
-      btn.disabled = true;
-      btn.textContent = "傳送中...";
-      status.style.display = "block";
-      status.textContent = "同步上傳中...";
+function money(n) { return '$' + Number(n || 0).toLocaleString('zh-TW'); }
+function sum(a) { return a.reduce((s, x) => s + Number(x.amount || 0), 0); }
+function proj(id) { return db.projects.find(p => p.id == id); }
 
-      try {
-        await fetch(API_URL, {
-          method: "POST",
-          body: JSON.stringify({ content: content })
-        });
+function totals(p) {
+  let ex = sum(db.expenses.filter(x => x.projectId == p.id));
+  let wa = sum(db.wages.filter(x => x.projectId == p.id));
+  let pa = sum(db.payments.filter(x => x.projectId == p.id));
+  return { ex, wa, pa, profit: p.amount - ex - wa, remain: p.amount - pa };
+}
 
-        input.value = "";
-        btn.disabled = false;
-        btn.textContent = "新增";
-        
-        // 重新更新列表
-        loadData();
-      } catch (err) {
-        alert("新增失敗，請再試一次");
-        btn.disabled = false;
-        btn.textContent = "新增";
-      }
-    }
+function render() {
+  renderSelects(); renderDashboard(); renderProjects(); renderExpenses(); renderWages(); renderPayments();
+}
 
-    // 開啟網頁時自動執行載入
-    loadData();
-  </script>
+function renderSelects() {
+  ['eProject', 'wProject', 'payProject'].forEach(id => {
+    const el = document.getElementById(id); const old = el.value;
+    el.innerHTML = '<option value="">-- 請選擇工程 --</option>' + db.projects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
+    el.value = old;
+  });
+  const c = document.getElementById('eCategory'); const old = c.value;
+  c.innerHTML = db.categories.map(x => `<option>${esc(x)}</option>`).join('');
+  c.value = old || db.categories[0];
+}
+
+function renderDashboard() {
+  const day = db.projects.filter(p => p.date === today).reduce((s, p) => s + p.amount, 0);
+  const mPrefix = today.slice(0, 7);
+  const mExp = sum(db.expenses.filter(x => x.date.startsWith(mPrefix)));
+  const mW = sum(db.wages.filter(x => x.date.startsWith(mPrefix)));
+  const mPay = sum(db.payments.filter(x => x.date.startsWith(mPrefix)));
+
+  document.getElementById('cards').innerHTML = [
+    ['今日工程案量', day], ['本月已收款', mPay], ['本月支出', mExp],
+    ['本月工資', mW], ['本月淨利', mPay - mExp - mW],
+    ['進行中工程', db.projects.filter(p => p.status === '進行中').length],
+    ['總未收款', db.projects.reduce((s, p) => s + totals(p).remain, 0)]
+  ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num">${typeof x[1] === 'number' && x[0].includes('工程') ? x[1] + ' 筆' : money(x[1])}</div></div>`).join('');
+
+  const active = db.projects.filter(p => p.status === '進行中');
+  document.getElementById('dashProjects').innerHTML = active.length ? 
+    `<table><tr><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#e87522">${money(t.profit)}</b></td></tr>`; }).join('')}</table>` : '<div class="empty">目前沒有進行中工程</div>';
+
+  const rec = db.projects.filter(p => totals(p).remain > 0);
+  document.getElementById('dashReceivables').innerHTML = rec.length ?
+    `<table><tr><th>工程名稱</th><th>工程總額</th><th>已收款</th><th>未收款</th></tr>${rec.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.pa)}</td><td><b style="color:#d97706">${money(t.remain)}</b></td></tr>`; }).join('')}</table>` : '<div class="empty">所有工程皆已結清無未收款</div>';
+}
+
+function renderProjects() {
+  document.getElementById('projectList').innerHTML = db.projects.length ?
+    `<table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${db.projects.map(p => {
+      let t = totals(p);
+      return `<tr><td>${p.date}</td><td><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b>${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
+    }).join('')}</table>` : '<div class="empty">尚無工程紀錄</div>';
+}
+
+function renderExpenses() {
+  document.getElementById('expenseList').innerHTML = db.expenses.length ?
+    `<table><tr><th>日期</th><th>工程名稱</th><th>項目</th><th>金額</th><th>備註</th><th>操作</th></tr>${db.expenses.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><span class="pill">${esc(x.category)}</span></td><td>${money(x.amount)}</td><td>${esc(x.note || '-')}</td><td><button class="danger" onclick="del('expenses',${x.id})">刪除</button></td></tr>`).join('')}</table>` : '<div class="empty">尚無支出紀錄</div>';
+}
+
+function renderWages() {
+  document.getElementById('wageList').innerHTML = db.wages.length ?
+    `<table><tr><th>日期</th><th>工程名稱</th><th>人員</th><th>工資金額</th><th>操作</th></tr>${db.wages.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${esc(x.person)}</b></td><td>${money(x.amount)}</td><td><button class="danger" onclick="del('wages',${x.id})">刪除</button></td></tr>`).join('')}</table>` : '<div class="empty">尚無工資紀錄</div>';
+}
+
+function renderPayments() {
+  document.getElementById('paymentList').innerHTML = db.payments.length ?
+    `<table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>備註</th><th>操作</th></tr>${db.payments.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td>${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table>` : '<div class="empty">尚無收款紀錄</div>';
+}
+
+function uid() { return Date.now() + Math.random(); }
+function del(type, n) {
+  if (confirm('確定要刪除這筆紀錄嗎？')) {
+    db[type] = db[type].filter(x => x.id != n);
+    save();
+  }
+}
+
+function addCategory() {
+  let x = prompt('請輸入新的支出項目名稱（例如：場地費、認證費）：');
+  if (x && x.trim()) {
+    if (!db.categories.includes(x.trim())) db.categories.push(x.trim());
+    save();
+    document.getElementById('eCategory').value = x.trim();
+  }
+}
+
+function detail(id) {
+  const p = proj(id), t = totals(p);
+  document.getElementById('detailBox').innerHTML = `
+    <h2>🏗️ ${esc(p.name)}</h2>
+    <p>📍 地址：${esc(p.address)}</p>
+    <p class="small">日期：${p.date} ｜ 狀態：${p.status}</p>
+    <hr>
+    <div class="cards">
+      <div class="card"><div class="label">工程總金額</div><div class="num">${money(p.amount)}</div></div>
+      <div class="card"><div class="label">材料／雜支</div><div class="num">${money(t.ex)}</div></div>
+      <div class="card"><div class="label">總工資</div><div class="num">${money(t.wa)}</div></div>
+      <div class="card"><div class="label">工程剩餘／毛利</div><div class="num" style="color:#e87522">${money(t.profit)}</div></div>
+      <div class="card"><div class="label">已收款</div><div class="num">${money(t.pa)}</div></div>
+      <div class="card"><div class="label">未收款</div><div class="num" style="color:#d97706">${money(t.remain)}</div></div>
+    </div>
+    <div class="actions" style="margin-top:20px">
+      <button class="primary" onclick="document.getElementById('detailModal').classList.remove('show')">關閉視窗</button>
+    </div>`;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '鐵工系統備份_' + today + '.json'; a.click();
+}
+
+function importData(ev) {
+  const f = ev.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const x = JSON.parse(r.result);
+      if (confirm('確定要使用此備份檔覆蓋目前的資料嗎？')) { db = x; save(); alert('資料還原成功！'); }
+    } catch (e) { alert('備份檔格式不正確！'); }
+  };
+  r.readAsText(f);
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+
+// 頁面切換事件
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.getElementById(b.dataset.page).classList.add('active');
+});
+
+// 表單送出事件
+document.getElementById('projectForm').onsubmit = e => {
+  e.preventDefault();
+  db.projects.push({ id: uid(), date: pDate.value, address: pAddress.value, name: pName.value, amount: +pAmount.value, status: pStatus.value });
+  e.target.reset(); pDate.value = today; save();
+};
+document.getElementById('expenseForm').onsubmit = e => {
+  e.preventDefault();
+  db.expenses.push({ id: uid(), projectId: +eProject.value, category: eCategory.value, amount: +eAmount.value, date: eDate.value, note: eNote.value });
+  e.target.reset(); eDate.value = today; save();
+};
+document.getElementById('wageForm').onsubmit = e => {
+  e.preventDefault();
+  db.wages.push({ id: uid(), projectId: +wProject.value, person: wPerson.value, amount: +wAmount.value, date: wDate.value });
+  e.target.reset(); wDate.value = today; save();
+};
+document.getElementById('paymentForm').onsubmit = e => {
+  e.preventDefault();
+  db.payments.push({ id: uid(), projectId: +payProject.value, amount: +payAmount.value, date: payDate.value, note: payNote.value });
+  e.target.reset(); payDate.value = today; save();
+};
+
+[pDate, eDate, wDate, payDate].forEach(x => x.value = today);
+
+// 頁面載入時先執行 render 並自動抓取雲端最新資料
+render();
+loadCloudData();
+</script>
 </body>
 </html>
