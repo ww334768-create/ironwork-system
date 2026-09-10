@@ -309,7 +309,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 <div class="modal" id="detailModal"><div class="modalbox" id="detailBox"></div></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyeT9RuVtJGXC5g95W1t3lyrBh86vJ-Kz9LVsKRcX5RfYnC8ZMQvqwAYJncaIwZAVp8/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxc8MHdnNMwt_45IHhnR0PSd-QQMjqLAZ0a744rR57l3LITTU-RhikwDKCxvNTddw2v/exec";
 const KEY = 'iron_work_system_data';
 const today = new Date().toISOString().split('T')[0];
 
@@ -367,7 +367,6 @@ async function save() {
   }
 }
 
-// 讀取外部 Google 試算表估價單（自動解析民國日期、地址、品項、民國轉西元）
 async function importFromGoogleSheetPrompt() {
   let url = prompt('請輸入您現有的 Google 試算表網址 (URL)：\n(請確保該試算表權限已設為「知道連結的任何人都能檢視」)');
   if (!url || !url.trim()) return;
