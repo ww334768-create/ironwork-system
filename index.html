@@ -150,6 +150,11 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
         </thead>
         <tbody id="quoteItems"></tbody>
         <tfoot>
+          <tr style="background:#fafafa;font-weight:bold;">
+            <td colspan="6" style="text-align:right;padding-right:12px;">總計</td>
+            <td id="tableTotalCell" style="font-size:15px;color:#173b63;">$0</td>
+            <td class="no-print"></td>
+          </tr>
           <tr>
             <td colspan="2" style="font-weight:bold;background:#fafafa">備註說明</td>
             <td colspan="5">
@@ -173,7 +178,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
         <div class="quote-footer-row">
           <div class="quote-terms">
             <div>1. 本估價單有效期間 <input id="qValidDays" type="number" value="7" style="width:40px;text-align:center"> 天。</div>
-            <div>2. 如蒙惠顧請先付訂金 <input id="qDepositPercent" type="number" value="3" style="width:40px;text-align:center" onchange="calcDeposit()"> 成。</div>
+            <div>2. 如蒙惠顧請先付訂金 <input id="qDepositPercent" type="number" value="3" style="width:40px;text-align:center"> 成。</div>
             <div>3. 收款方式：簽約請付三分之一訂金，現場入料施工三分之一，完工後驗收收尾款（銅骨工程內，不含全部工程完工）。</div>
             <div>4. 依估價單項目為主，如有增加另計。</div>
           </div>
@@ -187,7 +192,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
       <table class="quote-summary-table">
         <tr>
           <td style="width:50%">
-            工程總金額：<input id="qTotalStr" style="width:60%;display:inline-block;font-weight:bold" placeholder="未填寫"> 元整
+            工程總金額：<input id="qTotalStr" style="width:60%;display:inline-block;font-weight:bold" placeholder=""> 元整
           </td>
           <td style="width:50%" rowspan="2" valign="top">
             客戶簽名：
@@ -195,7 +200,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
         </tr>
         <tr>
           <td>
-            收訂金額：<input id="qDepositStr" style="width:60%;display:inline-block;font-weight:bold" placeholder="自動計算或自訂"> 元整
+            收訂金額：<input id="qDepositStr" style="width:60%;display:inline-block;font-weight:bold" placeholder=""> 元整
           </td>
         </tr>
         <tr>
@@ -212,7 +217,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
       </div>
     </div>
 
-    <!-- 歷史估價單紀錄列表（一格一格分類） -->
+    <!-- 歷史估價單紀錄列表 -->
     <div class="section no-print" style="max-width:850px;margin:25px auto 0 auto;">
       <h2>📋 歷史估價單列表（點擊可查看或修改）</h2>
       <div id="quoteHistoryList"></div>
@@ -265,7 +270,12 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 4px;b
       <form id="wageForm">
         <div class="grid">
           <div><label>選擇工程</label><select id="wProject" required></select></div>
-          <div><label>人員姓名</label><input id="wPerson" placeholder="例如：阿平" required></div>
+          <div>
+            <label>人員姓名</label>
+            <!-- 加上 list 連結歷史人員記憶庫 -->
+            <input id="wPerson" list="personHistoryList" placeholder="選擇或直接輸入姓名" required>
+            <datalist id="personHistoryList"></datalist>
+          </div>
           <div><label>工資金額</label><input id="wAmount" type="number" min="0" required></div>
           <div><label>日期</label><input id="wDate" type="date" required></div>
         </div>
@@ -300,15 +310,16 @@ const API_URL = "https://script.google.com/macros/s/AKfycbxsly23moU4OMHkphFlWw3j
 const KEY = 'iron_work_system_data';
 const today = new Date().toISOString().split('T')[0];
 
-let currentQuoteId = null; // 紀錄目前正在編輯哪一張估價單
+let currentQuoteId = null;
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [{ id: 1, date: today, address: '臺南市安南區溪東里府安路五段119巷28號', name: '溪東里府安路工程', amount: 43000, status: '進行中' }],
   expenses: [], wages: [], payments: [],
-  quotesList: [], // 儲存多張歷史估價單的地方
+  quotesList: [],
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他'],
   historyItems: ['屋頂拆除', '屋頂鋼板', '鋼板水切', '口蓋', '中直', '水槽', '水管', '後面壁堵', '窗戶修邊', '吊車', '裝潢拆除含清運'],
   historySpecs: ['石棉瓦裝太空包', '鋁鋅0.5mmPU雙層', '鋁鋅0.5mm', '白鐵0.4mm', 'PVC管', '15T全吊+吊卡車', '三樓天花板'],
+  historyPersons: ['阿平', '阿強'], // 人員姓名歷史記憶庫
   activeQuote: {
     date: today, address: '南園街127巷59號', name: '屋頂修繕工程', note: '項目包含石棉瓦裝太空包 不含清運',
     items: [
@@ -333,6 +344,7 @@ async function loadCloudData() {
           if (parsed && parsed.projects) {
             db = parsed;
             if(!db.quotesList) db.quotesList = [];
+            if(!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
             localStorage.setItem(KEY, JSON.stringify(db));
             statusEl.textContent = '✅ 雲端同步完成！已連線最新數據。';
             render();
@@ -441,21 +453,11 @@ function removeQuoteRow(idx) {
 
 function calcQuoteTotal() {
   let total = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
-  document.getElementById('qTotalStr').value = total ? Number(total).toLocaleString() : '';
-  calcDeposit();
+  document.getElementById('tableTotalCell').textContent = '$' + Number(total).toLocaleString();
   return total;
 }
 
-function calcDeposit() {
-  let total = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
-  let percent = parseFloat(document.getElementById('qDepositPercent').value) || 0;
-  if (total && percent) {
-    let deposit = Math.round(total * (percent / 10));
-    document.getElementById('qDepositStr').value = Number(deposit).toLocaleString();
-  }
-}
-
-/* 儲存估價單為獨立紀錄 */
+/* 儲存估價單數據 */
 function saveCurrentQuote() {
   syncCurrentQuoteFromForm();
   if (!db.quotesList) db.quotesList = [];
@@ -464,14 +466,12 @@ function saveCurrentQuote() {
   qData.totalAmount = (qData.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
 
   if (currentQuoteId) {
-    // 覆蓋舊有的估價單
     let idx = db.quotesList.findIndex(q => q.id === currentQuoteId);
     if (idx !== -1) {
       qData.id = currentQuoteId;
       db.quotesList[idx] = qData;
     }
   } else {
-    // 新增一筆估價單
     qData.id = uid();
     currentQuoteId = qData.id;
     db.quotesList.push(qData);
@@ -492,7 +492,7 @@ function syncCurrentQuoteFromForm() {
   db.activeQuote.depositPercent = document.getElementById('qDepositPercent').value;
 }
 
-/* 開立全新空白估價單 */
+/* 開立空白估價單 */
 function resetNewQuote() {
   currentQuoteId = null;
   db.activeQuote = {
@@ -500,6 +500,8 @@ function resetNewQuote() {
     items: [{ name: '', spec: '', qty: '', unit: '', price: '', total: 0 }]
   };
   document.getElementById('currentQuoteStatus').textContent = '📄 目前編輯：新估價單';
+  document.getElementById('qTotalStr').value = '';
+  document.getElementById('qDepositStr').value = '';
   renderQuote();
 }
 
@@ -524,7 +526,7 @@ function deleteQuote(id) {
   }
 }
 
-/* 渲染歷史估價單列表 (一格一格卡片/表格) */
+/* 渲染歷史估價單列表 */
 function renderQuoteHistory() {
   let container = document.getElementById('quoteHistoryList');
   if (!db.quotesList || db.quotesList.length === 0) {
@@ -557,7 +559,7 @@ function renderQuoteHistory() {
   `;
 }
 
-/* 報價單帶入工程單（僅帶入：日期、地址、名稱、總金額） */
+/* 帶入轉為工程單 */
 function convertToProject() {
   syncCurrentQuoteFromForm();
   let totalAmount = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
@@ -604,6 +606,11 @@ function renderSelects() {
   const c = document.getElementById('eCategory'); const old = c.value;
   c.innerHTML = db.categories.map(x => `<option>${esc(x)}</option>`).join('');
   c.value = old || db.categories[0];
+
+  // 渲染工資人員下拉記憶選單
+  if(!db.historyPersons) db.historyPersons = [];
+  const pList = document.getElementById('personHistoryList');
+  pList.innerHTML = db.historyPersons.map(x => `<option value="${esc(x)}">`).join('');
 }
 
 function renderDashboard() {
@@ -714,6 +721,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.getElementById(b.dataset.page).classList.active;
   document.getElementById(b.dataset.page).classList.add('active');
 });
 
@@ -729,7 +737,17 @@ document.getElementById('expenseForm').onsubmit = e => {
 };
 document.getElementById('wageForm').onsubmit = e => {
   e.preventDefault();
-  db.wages.push({ id: uid(), projectId: +wProject.value, person: wPerson.value, amount: +wAmount.value, date: wDate.value });
+  let personName = wPerson.value.trim();
+  
+  // 新增工資紀錄
+  db.wages.push({ id: uid(), projectId: +wProject.value, person: personName, amount: +wAmount.value, date: wDate.value });
+  
+  // 自動將新的人員姓名加入歷史記憶清單
+  if (!db.historyPersons) db.historyPersons = [];
+  if (personName && !db.historyPersons.includes(personName)) {
+    db.historyPersons.push(personName);
+  }
+
   e.target.reset(); wDate.value = today; save();
 };
 document.getElementById('paymentForm').onsubmit = e => {
