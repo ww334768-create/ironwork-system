@@ -111,7 +111,6 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
   <!-- 首頁 -->
   <section id="dashboard" class="page active">
-    <!-- 加上 margin-bottom 增加與下方卡片的距離 -->
     <div class="section" style="margin-top:0; margin-bottom:18px;">
       <div class="actions" style="margin-top:0">
         <button class="secondary" onclick="exportData()">⬇ 備份系統資料</button>
@@ -240,8 +239,12 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   <!-- 工程管理 -->
   <section id="projects" class="page">
     <div class="section">
-      <h2>新增工程資料</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 id="projectFormTitle" style="margin:0">新增工程資料</h2>
+        <button id="cancelEditProject" class="secondary" style="display:none;padding:4px 10px;font-size:13px" onclick="resetProjectForm()">取消編輯</button>
+      </div>
       <form id="projectForm">
+        <input type="hidden" id="editingProjectId">
         <div class="grid">
           <div><label>日期</label><input id="pDate" type="date" required></div>
           <div><label>工程地址</label><input id="pAddress" placeholder="例如：臺南市安南區..." required></div>
@@ -658,8 +661,34 @@ function renderProjects() {
   document.getElementById('projectList').innerHTML = sorted.length ?
     `<div class="table-responsive"><table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${sorted.map(p => {
       let t = totals(p);
-      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b>${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
+      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b>${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="editProject(${p.id})">編輯</button> <button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
     }).join('')}</table></div>` : '<div class="empty">尚無工程紀錄</div>';
+}
+
+function editProject(id) {
+  let p = db.projects.find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('editingProjectId').value = p.id;
+  document.getElementById('pDate').value = p.date || today;
+  document.getElementById('pAddress').value = p.address || '';
+  document.getElementById('pName').value = p.name || '';
+  document.getElementById('pAmount').value = p.amount || 0;
+  document.getElementById('pStatus').value = p.status || '進行中';
+  
+  document.getElementById('projectFormTitle').textContent = '編輯工程資料：' + p.name;
+  document.getElementById('btnProject').textContent = '💾 修改更新工程';
+  document.getElementById('cancelEditProject').style.display = 'inline-block';
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetProjectForm() {
+  document.getElementById('projectForm').reset();
+  document.getElementById('editingProjectId').value = '';
+  document.getElementById('pDate').value = today;
+  document.getElementById('projectFormTitle').textContent = '新增工程資料';
+  document.getElementById('btnProject').textContent = '＋ 新增工程';
+  document.getElementById('cancelEditProject').style.display = 'none';
 }
 
 function renderExpenses() {
@@ -684,6 +713,9 @@ function uid() { return Date.now() + Math.random().toString().slice(2,6); }
 function del(type, n) {
   if (confirm('確定要刪除這筆紀錄嗎？')) {
     db[type] = db[type].filter(x => x.id != n);
+    if (type === 'projects' && document.getElementById('editingProjectId').value == n) {
+      resetProjectForm();
+    }
     save();
   }
 }
@@ -747,9 +779,27 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 
 document.getElementById('projectForm').onsubmit = e => {
   e.preventDefault();
-  db.projects.push({ id: uid(), date: pDate.value, address: pAddress.value, name: pName.value, amount: +pAmount.value, status: pStatus.value });
-  e.target.reset(); pDate.value = today; save();
+  let editId = document.getElementById('editingProjectId').value;
+  
+  if (editId) {
+    let p = db.projects.find(x => x.id == editId);
+    if (p) {
+      p.date = pDate.value;
+      p.address = pAddress.value;
+      p.name = pName.value;
+      p.amount = +pAmount.value;
+      p.status = pStatus.value;
+    }
+    alert('工程資料已成功更新！');
+  } else {
+    db.projects.push({ id: uid(), date: pDate.value, address: pAddress.value, name: pName.value, amount: +pAmount.value, status: pStatus.value });
+    alert('已成功新增工程！');
+  }
+  
+  resetProjectForm();
+  save();
 };
+
 document.getElementById('expenseForm').onsubmit = e => {
   e.preventDefault();
   db.expenses.push({ id: uid(), projectId: +eProject.value, category: eCategory.value, amount: +eAmount.value, date: eDate.value, note: eNote.value });
