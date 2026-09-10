@@ -32,17 +32,42 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;
 .modal.show{display:flex}.modalbox{background:white;border-radius:14px;max-width:700px;width:100%;max-height:90vh;overflow:auto;padding:22px}
 .small{font-size:12px;color:#6b7280}
 .sync-status{background:#e0f2fe;color:#0369a1;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;justify-content:space-between;}
-@media(max-width:600px){main{padding:12px}.section{padding:15px}th,td{padding:8px 4px;font-size:13px}}
+
+/* 估價單專用樣式 */
+.quote-paper{background:white;padding:30px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);max-width:850px;margin:auto}
+.quote-header{text-align:center;border-bottom:2px solid #173b63;padding-bottom:15px;margin-bottom:20px}
+.quote-header h2{margin:0;font-size:24px;color:#173b63}
+.quote-meta{display:flex;justify-content:space-between;margin-bottom:15px;flex-wrap:wrap;gap:10px}
+.quote-table{width:100%;border-collapse:collapse;margin-bottom:15px}
+.quote-table th,.quote-table td{border:1px solid #333;padding:8px;text-align:center}
+.quote-table input{border:none;background:transparent;padding:4px;text-align:center;width:100%}
+.quote-footer{margin-top:20px;font-size:14px;line-height:1.8}
+.quote-footer p{margin:4px 0}
+.signature-box{display:flex;justify-content:space-between;margin-top:30px;padding-top:10px}
+
+/* 列印 PDF 設定 */
+@media print {
+  header, nav, .actions, .sync-status, .no-print, button, .danger { display: none !important; }
+  main { padding: 0; margin: 0; max-width: 100%; }
+  body { background: white; }
+  .section, .quote-paper { box-shadow: none; padding: 0; }
+  .quote-table input { border: none; }
+  .page { display: block !important; }
+  .page:not(.active) { display: none !important; }
+}
+
+@media(max-width:600px){main{padding:12px}.section{padding:15px}th,td{padding:8px 4px;font-size:13px}.quote-paper{padding:15px}}
 </style>
 </head>
 <body>
 <header>
   <h1>🏗️ 鐵工工程管理系統</h1>
-  <p>工程、支出、工資、收款與損益一站管理 (☁️ 雲端同步版)</p>
+  <p>工程、估價單、支出、工資與損益一站管理 (☁️ 雲端同步版)</p>
 </header>
 
 <nav id="nav">
   <button data-page="dashboard" class="active">首頁儀表板</button>
+  <button data-page="quotes">估價報價單</button>
   <button data-page="projects">工程管理</button>
   <button data-page="expenses">工程支出</button>
   <button data-page="wages">人員工資</button>
@@ -50,7 +75,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;
 </nav>
 
 <main>
-  <div id="syncStatus" class="sync-status">
+  <div id="syncStatus" class="sync-status no-print">
     <span id="syncText">☁️ 雲端同步狀態：資料讀取中...</span>
     <button class="secondary" style="padding:4px 8px;font-size:12px" onclick="loadCloudData()">🔄 手動整理同步</button>
   </div>
@@ -68,6 +93,77 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;
     <div class="cards" id="cards"></div>
     <div class="section"><h2>進行中工程概況</h2><div id="dashProjects"></div></div>
     <div class="section"><h2>未收款工程</h2><div id="dashReceivables"></div></div>
+  </section>
+
+  <!-- 估價報價單頁面 -->
+  <section id="quotes" class="page">
+    <div class="quote-paper">
+      <div class="quote-header">
+        <h2>工程估價單</h2>
+      </div>
+      
+      <div class="quote-meta">
+        <div style="flex:1;min-width:200px;">
+          <label>日期：</label>
+          <input id="qDate" type="date" style="width:180px">
+        </div>
+        <div style="flex:2;min-width:250px;">
+          <label>地點 / 地址：</label>
+          <input id="qAddress" placeholder="例如：南園街127巷59號">
+        </div>
+        <div style="flex:2;min-width:250px;">
+          <label>工程名稱／客戶：</label>
+          <input id="qName" placeholder="例如：屋頂修繕工程">
+        </div>
+      </div>
+
+      <table class="quote-table">
+        <thead>
+          <tr style="background:#f2f2f2">
+            <th style="width:5%">項</th>
+            <th style="width:20%">工程項目</th>
+            <th style="width:25%">規格</th>
+            <th style="width:10%">數量</th>
+            <th style="width:8%">單位</th>
+            <th style="width:12%">單價</th>
+            <th style="width:12%">金額</th>
+            <th style="width:8%" class="no-print">操作</th>
+          </tr>
+        </thead>
+        <tbody id="quoteItems">
+          <!-- 動態渲染品項列表 -->
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align:right;font-weight:bold;font-size:16px">工程總金額：</td>
+            <td id="quoteTotal" style="font-weight:bold;font-size:16px;color:#173b63">$0</td>
+            <td class="no-print"></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="no-print" style="margin-bottom:15px">
+        <button class="secondary" onclick="addQuoteRow()">＋ 新增品項</button>
+      </div>
+
+      <div class="quote-footer">
+        <p>1. 本估價單有效期間 <input id="qValidDays" type="number" value="7" style="width:50px;text-align:center"> 天。</p>
+        <p>2. 如蒙惠顧請先付訂金 <input id="qDepositPercent" type="number" value="3" style="width:50px;text-align:center"> 成。</p>
+        <p>3. 收款方式：簽約請付三分之一訂金，現場入料施工三分之一，完工後驗收收尾款。</p>
+        <p>4. 依估價單項目為主，如有增加另計。</p>
+        
+        <div class="signature-box">
+          <div>經手人：<input id="qAgent" placeholder="請輸入姓名/電話" style="border-bottom:1px solid #000;border-radius:0;width:180px"></div>
+          <div>客戶簽名：____________________</div>
+        </div>
+      </div>
+
+      <div class="actions no-print" style="margin-top:25px;justify-content:center">
+        <button class="primary" style="padding:12px 24px;font-size:16px" onclick="window.print()">🖨️ 轉 PDF / 列印估價單</button>
+        <button class="secondary" style="padding:12px 24px;font-size:16px;background:#059669" onclick="convertToProject()">🏗️ 一鍵轉為工程單</button>
+        <button class="secondary" style="padding:12px 24px;font-size:16px" onclick="saveQuote()">💾 儲存估價單數據</button>
+      </div>
+    </div>
   </section>
 
   <!-- 工程管理 -->
@@ -147,12 +243,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;
 <div class="modal" id="detailModal"><div class="modalbox" id="detailBox"></div></div>
 
 <script>
-// API 雲端資料庫連結
 const API_URL = "https://script.google.com/macros/s/AKfycbxsly23moU4OMHkphFlWw3jYUKsoCusS1-DE2j7sN-nvTGMTG_HV7TfAOPxxz7vbSr9/exec";
 const KEY = 'iron_work_system_data';
 const today = new Date().toISOString().split('T')[0];
 
-// 預設本機資料庫
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [{ id: 1, date: today, address: '臺南市安南區溪東里府安路五段119巷28號', name: '溪東里府安路工程', amount: 43000, status: '進行中' }],
   expenses: [
@@ -164,10 +258,18 @@ let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
     { id: 2, projectId: 1, person: '瑞', amount: 4500, date: today }
   ],
   payments: [],
-  categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他']
+  categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他'],
+  quote: {
+    date: today, address: '南園街127巷59號', name: '屋頂修繕工程',
+    items: [
+      { name: '屋頂拆除', spec: '石棉瓦裝太空包', qty: 16.5, unit: '坪', price: 900, total: 14850 },
+      { name: '屋頂鋼板', spec: '鋁鋅0.5mmPU雙層', qty: 16.5, unit: '坪', price: 3300, total: 54450 },
+      { name: '鋼板水切', spec: '鋁鋅0.5mm', qty: 48, unit: '尺', price: 180, total: 8640 }
+    ],
+    agent: ''
+  }
 };
 
-// 從 Google 雲端載入最新資料
 async function loadCloudData() {
   const statusEl = document.getElementById('syncText');
   statusEl.textContent = '☁️ 雲端同步中，正在讀取最新資料...';
@@ -175,7 +277,6 @@ async function loadCloudData() {
     const res = await fetch(API_URL);
     const cloudData = await res.json();
     if (cloudData && cloudData.length > 0) {
-      // 尋找最新的有效雲端備份
       for (let i = cloudData.length - 1; i >= 0; i--) {
         try {
           let parsed = JSON.parse(cloudData[i].content);
@@ -184,6 +285,7 @@ async function loadCloudData() {
             localStorage.setItem(KEY, JSON.stringify(db));
             statusEl.textContent = '✅ 雲端同步完成！已連線最新數據。';
             render();
+            renderQuote();
             return;
           }
         } catch(e) {}
@@ -195,7 +297,6 @@ async function loadCloudData() {
   }
 }
 
-// 儲存資料並推送到雲端
 async function save() {
   localStorage.setItem(KEY, JSON.stringify(db));
   render();
@@ -210,6 +311,92 @@ async function save() {
     statusEl.textContent = '✅ 異動已成功同步至雲端！';
   } catch (err) {
     statusEl.textContent = '⚠️ 雲端同步失敗，資料已先存於本機。';
+  }
+}
+
+/* 估價單邏輯 */
+function renderQuote() {
+  if (!db.quote) db.quote = { date: today, address: '', name: '', items: [] };
+  document.getElementById('qDate').value = db.quote.date || today;
+  document.getElementById('qAddress').value = db.quote.address || '';
+  document.getElementById('qName').value = db.quote.name || '';
+  document.getElementById('qAgent').value = db.quote.agent || '';
+
+  const tbody = document.getElementById('quoteItems');
+  tbody.innerHTML = '';
+  
+  let items = db.quote.items || [];
+  if (items.length === 0) { items = [{ name: '', spec: '', qty: 1, unit: '式', price: 0, total: 0 }]; }
+
+  items.forEach((item, idx) => {
+    let tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td><input value="${esc(item.name || '')}" oninput="updateQuoteItem(${idx}, 'name', this.value)"></td>
+      <td><input value="${esc(item.spec || '')}" oninput="updateQuoteItem(${idx}, 'spec', this.value)"></td>
+      <td><input type="number" step="any" value="${item.qty || ''}" oninput="updateQuoteItem(${idx}, 'qty', this.value)"></td>
+      <td><input value="${esc(item.unit || '')}" oninput="updateQuoteItem(${idx}, 'unit', this.value)"></td>
+      <td><input type="number" value="${item.price || ''}" oninput="updateQuoteItem(${idx}, 'price', this.value)"></td>
+      <td style="font-weight:bold">$${Number(item.total || 0).toLocaleString()}</td>
+      <td class="no-print"><button class="danger" onclick="removeQuoteRow(${idx})">刪</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  calcQuoteTotal();
+}
+
+function updateQuoteItem(idx, key, val) {
+  let item = db.quote.items[idx];
+  item[key] = key === 'qty' || key === 'price' ? parseFloat(val) || 0 : val;
+  item.total = (item.qty || 0) * (item.price || 0);
+  renderQuote();
+}
+
+function addQuoteRow() {
+  if (!db.quote.items) db.quote.items = [];
+  db.quote.items.push({ name: '', spec: '', qty: 1, unit: '式', price: 0, total: 0 });
+  renderQuote();
+}
+
+function removeQuoteRow(idx) {
+  db.quote.items.splice(idx, 1);
+  renderQuote();
+}
+
+function calcQuoteTotal() {
+  let total = (db.quote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
+  document.getElementById('quoteTotal').textContent = money(total);
+  return total;
+}
+
+function saveQuote() {
+  db.quote.date = document.getElementById('qDate').value;
+  db.quote.address = document.getElementById('qAddress').value;
+  db.quote.name = document.getElementById('qName').value;
+  db.quote.agent = document.getElementById('qAgent').value;
+  save();
+  alert('估價單已成功儲存並同步至雲端！');
+}
+
+function convertToProject() {
+  saveQuote();
+  let totalAmount = calcQuoteTotal();
+  let name = db.quote.name || '未命名估價工程';
+  let address = db.quote.address || '未填寫地址';
+
+  if (confirm(`確定要將【${name}】轉為正式工程單嗎？\n總金額：${money(totalAmount)}`)) {
+    db.projects.push({
+      id: uid(),
+      date: db.quote.date || today,
+      address: address,
+      name: name,
+      amount: totalAmount,
+      status: '進行中'
+    });
+    save();
+    alert('已成功轉為工程單！');
+    // 自動切換到工程頁面
+    document.querySelector('button[data-page="projects"]').click();
   }
 }
 
@@ -375,8 +562,8 @@ document.getElementById('paymentForm').onsubmit = e => {
 
 [pDate, eDate, wDate, payDate].forEach(x => x.value = today);
 
-// 頁面載入時先執行 render 並自動抓取雲端最新資料
 render();
+renderQuote();
 loadCloudData();
 </script>
 </body>
