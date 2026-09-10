@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>鐵工工程管理系統｜第二版</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Noto Sans TC",sans-serif;background:#f4f6f8;color:#1f2937}
+header{background:linear-gradient(135deg,#173b63,#e87522);color:white;padding:22px 28px}
+header h1{margin:0 0 5px;font-size:25px} header p{margin:0;opacity:.9}
+nav{display:flex;gap:8px;padding:12px 18px;background:white;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5;overflow:auto}
+nav button{border:0;background:#eef2f7;padding:10px 16px;border-radius:9px;cursor:pointer;white-space:nowrap}
+nav button.active{background:#173b63;color:white}
+main{max-width:1200px;margin:auto;padding:22px}
+.page{display:none}.page.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.card{background:white;border-radius:14px;padding:18px;box-shadow:0 2px 9px #0000000d}
+.card .label{font-size:14px;color:#6b7280}.card .num{font-size:25px;font-weight:700;margin-top:8px}
+.section{background:white;border-radius:14px;padding:20px;margin-top:18px;box-shadow:0 2px 9px #0000000d}
+.section h2{font-size:19px;margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+label{font-size:13px;color:#4b5563;display:block;margin-bottom:5px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:white}
+button.primary{background:#e87522;color:white;border:0;padding:10px 16px;border-radius:8px;cursor:pointer}
+button.secondary{background:#173b63;color:white;border:0;padding:10px 16px;border-radius:8px;cursor:pointer}
+button.danger{background:#fee2e2;color:#991b1b;border:0;padding:7px 10px;border-radius:7px;cursor:pointer}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 8px;border-bottom:1px solid #eee;text-align:left}th{color:#6b7280;font-weight:600}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e8f1fb;color:#173b63;font-size:12px}
+.empty{text-align:center;color:#9ca3af;padding:25px}
+.modal{display:none;position:fixed;inset:0;background:#0007;align-items:center;justify-content:center;padding:15px;z-index:10}
+.modal.show{display:flex}.modalbox{background:white;border-radius:14px;max-width:700px;width:100%;max-height:90vh;overflow:auto;padding:22px}
+.small{font-size:12px;color:#6b7280}.money{font-variant-numeric:tabular-nums}
+@media(max-width:600px){main{padding:12px}.section{padding:15px}th,td{padding:8px 4px;font-size:12px}}
+</style>
+</head>
+<body>
+<header><h1>🏗️ 鐵工工程管理系統｜第二版</h1><p>工程、支出、工資、收款與損益一站管理</p></header>
+<nav id="nav">
+<button data-page="dashboard" class="active">首頁</button>
+<button data-page="projects">工程管理</button>
+<button data-page="expenses">工程支出</button>
+<button data-page="wages">工資</button>
+<button data-page="payments">收款</button>
+</nav>
+<main>
+<section id="dashboard" class="page active">
+<div class="section" style="margin-top:0"><div class="actions" style="margin-top:0">
+<button class="secondary" onclick="exportData()">⬇ 備份資料</button>
+<button class="primary" onclick="document.getElementById('importFile').click()">⬆ 還原資料</button>
+<input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
+</div><div class="small" style="margin-top:8px">建議定期備份，換電腦或清除瀏覽器資料前可用備份檔還原。</div></div>
+<div class="cards" id="cards"></div>
+<div class="section"><h2>進行中工程</h2><div id="dashProjects"></div></div>
+<div class="section"><h2>未收款</h2><div id="dashReceivables"></div></div>
+</section>
+
+<section id="projects" class="page">
+<div class="section"><h2>新增工程</h2>
+<form id="projectForm">
+<div class="grid">
+<div><label>日期</label><input id="pDate" type="date" required></div>
+<div><label>工程地址</label><input id="pAddress" required></div>
+<div><label>客戶／工程名稱</label><input id="pName" required></div>
+<div><label>工程總金額</label><input id="pAmount" type="number" min="0" required></div>
+<div><label>工程狀態</label><select id="pStatus"><option>進行中</option><option>已完成</option><option>暫停</option></select></div>
+</div><div class="actions"><button class="primary">新增工程</button></div>
+</form></div>
+<div class="section"><h2>工程列表</h2><div id="projectList"></div></div>
+</section>
+
+<section id="expenses" class="page">
+<div class="section"><h2>新增支出</h2>
+<form id="expenseForm"><div class="grid">
+<div><label>工程</label><select id="eProject" required></select></div>
+<div><label>支出項目</label><select id="eCategory"></select></div>
+<div><label>金額</label><input id="eAmount" type="number" min="0" required></div>
+<div><label>日期</label><input id="eDate" type="date" required></div>
+<div><label>備註</label><input id="eNote"></div>
+</div><div class="actions"><button type="button" class="secondary" onclick="addCategory()">＋新增支出項目</button><button class="primary">新增支出</button></div>
+</form></div>
+<div class="section"><h2>支出紀錄</h2><div id="expenseList"></div></div>
+</section>
+
+<section id="wages" class="page">
+<div class="section"><h2>新增工資</h2>
+<form id="wageForm"><div class="grid">
+<div><label>工程</label><select id="wProject" required></select></div>
+<div><label>人員姓名</label><input id="wPerson" required></div>
+<div><label>工資金額</label><input id="wAmount" type="number" min="0" required></div>
+<div><label>日期</label><input id="wDate" type="date" required></div>
+</div><div class="actions"><button class="primary">新增工資</button></div></form></div>
+<div class="section"><h2>工資紀錄</h2><div id="wageList"></div></div>
+</section>
+
+<section id="payments" class="page">
+<div class="section"><h2>新增收款</h2>
+<form id="paymentForm"><div class="grid">
+<div><label>工程</label><select id="payProject" required></select></div>
+<div><label>收款金額</label><input id="payAmount" type="number" min="0" required></div>
+<div><label>日期</label><input id="payDate" type="date" required></div>
+<div><label>備註</label><input id="payNote"></div>
+</div><div class="actions"><button class="primary">新增收款</button></div></form></div>
+<div class="section"><h2>收款紀錄</h2><div id="paymentList"></div></div>
+</section>
+</main>
+
+<div class="modal" id="detailModal"><div class="modalbox" id="detailBox"></div></div>
+
+<script>
+const KEY='iron_system_v1';
+const today='2026-09-10';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
+ projects:[{id:1,date:today,address:'臺南市安南區溪東里府安路五段119巷28號',name:'範例鐵工工程',amount:43000,status:'進行中'}],
+ expenses:[{id:1,projectId:1,category:'料錢',amount:9800,date:today,note:''},{id:2,projectId:1,category:'吊車',amount:2500,date:today,note:''}],
+ wages:[{id:1,projectId:1,person:'平',amount:3700,date:today},{id:2,projectId:1,person:'瑞',amount:4500,date:today}],
+ payments:[],
+ categories:['料錢','吊車','餐費','油錢','五金','外包','其他']
+};
+function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
+function money(n){return '$'+Number(n||0).toLocaleString('zh-TW')}
+function sum(a){return a.reduce((s,x)=>s+Number(x.amount||0),0)}
+function proj(id){return db.projects.find(p=>p.id==id)}
+function totals(p){
+ let ex=sum(db.expenses.filter(x=>x.projectId==p.id)), wa=sum(db.wages.filter(x=>x.projectId==p.id)), pa=sum(db.payments.filter(x=>x.projectId==p.id));
+ return {ex,wa,pa,profit:p.amount-ex-wa,remain:p.amount-pa};
+}
+function render(){
+ renderSelects(); renderDashboard(); renderProjects(); renderExpenses(); renderWages(); renderPayments();
+}
+function renderSelects(){
+ for(const id of ['eProject','wProject','payProject']){
+  const el=document.getElementById(id); const old=el.value;
+  el.innerHTML='<option value="">請選擇工程</option>'+db.projects.map(p=>`<option value="${p.id}">${esc(p.name)}（${money(p.amount)}）</option>`).join('');
+  el.value=old;
+ }
+ const c=document.getElementById('eCategory'); const old=c.value;
+ c.innerHTML=db.categories.map(x=>`<option>${esc(x)}</option>`).join(''); c.value=old||db.categories[0];
+}
+function renderDashboard(){
+ const day=db.projects.filter(p=>p.date===today).reduce((s,p)=>s+p.amount,0);
+ const monthPrefix=today.slice(0,7);
+ const monthProjects=db.projects.filter(p=>p.date.startsWith(monthPrefix));
+ const monthExp=db.expenses.filter(x=>x.date.startsWith(monthPrefix)), monthW=db.wages.filter(x=>x.date.startsWith(monthPrefix));
+ const monthPay=db.payments.filter(x=>x.date.startsWith(monthPrefix));
+ const monthRevenue=sum(monthPay), exp=sum(monthExp), wages=sum(monthW);
+ document.getElementById('cards').innerHTML=[
+ ['今日營收',day],['本月營收',monthRevenue],['本月支出',exp],['本月工資',wages],
+ ['本月淨利',monthRevenue-exp-wages],['進行中工程',db.projects.filter(p=>p.status==='進行中').length],
+ ['未收款',db.projects.reduce((s,p)=>s+totals(p).remain,0)]
+ ].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="num money">${typeof x[1]==='number'&&x[0].includes('工程')?x[1]:money(x[1])}</div></div>`).join('');
+ const active=db.projects.filter(p=>p.status==='進行中');
+ document.getElementById('dashProjects').innerHTML=active.length?`<table><tr><th>工程</th><th>工程金額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p=>{let t=totals(p);return `<tr><td>${esc(p.name)}</td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td>${money(t.profit)}</td></tr>`}).join('')}</table>`:'<div class="empty">目前沒有進行中工程</div>';
+ const rec=db.projects.filter(p=>totals(p).remain>0);
+ document.getElementById('dashReceivables').innerHTML=rec.length?`<table><tr><th>工程</th><th>應收</th><th>已收</th><th>未收</th></tr>${rec.map(p=>{let t=totals(p);return `<tr><td>${esc(p.name)}</td><td>${money(p.amount)}</td><td>${money(t.pa)}</td><td>${money(t.remain)}</td></tr>`}).join('')}</table>`:'<div class="empty">目前沒有未收款</div>';
+}
+function renderProjects(){
+ document.getElementById('projectList').innerHTML=db.projects.length?`<table><tr><th>日期</th><th>工程</th><th>工程金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收</th><th>狀態</th><th></th></tr>${db.projects.map(p=>{let t=totals(p);return `<tr><td>${p.date}</td><td><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td>${money(t.profit)}</td><td>${money(t.remain)}</td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="detail(${p.id})">明細</button> <button class="primary" onclick="editProject(${p.id})">修改</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`}).join('')}</table>`:'<div class="empty">尚無工程</div>';
+}
+function renderExpenses(){
+ document.getElementById('expenseList').innerHTML=db.expenses.length?`<table><tr><th>日期</th><th>工程</th><th>項目</th><th>金額</th><th>備註</th><th></th></tr>${db.expenses.map(x=>`<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name||'')}</td><td>${esc(x.category)}</td><td>${money(x.amount)}</td><td>${esc(x.note||'')}</td><td><button class="danger" onclick="del('expenses',${x.id})">刪除</button></td></tr>`).join('')}</table>`:'<div class="empty">尚無支出</div>';
+}
+function renderWages(){
+ document.getElementById('wageList').innerHTML=db.wages.length?`<table><tr><th>日期</th><th>工程</th><th>人員</th><th>工資</th><th></th></tr>${db.wages.map(x=>`<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name||'')}</td><td>${esc(x.person)}</td><td>${money(x.amount)}</td><td><button class="danger" onclick="del('wages',${x.id})">刪除</button></td></tr>`).join('')}</table>`:'<div class="empty">尚無工資</div>';
+}
+function renderPayments(){
+ document.getElementById('paymentList').innerHTML=db.payments.length?`<table><tr><th>日期</th><th>工程</th><th>收款</th><th>備註</th><th></th></tr>${db.payments.map(x=>`<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name||'')}</td><td>${money(x.amount)}</td><td>${esc(x.note||'')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table>`:'<div class="empty">尚無收款紀錄</div>';
+}
+function id(){return Date.now()+Math.random()}
+function del(type,n){
+ if(type==='projects'){
+  const has=db.expenses.some(x=>x.projectId==n)||db.wages.some(x=>x.projectId==n)||db.payments.some(x=>x.projectId==n);
+  if(has){alert('此工程已有支出、工資或收款紀錄，為避免資料錯誤，請先刪除相關紀錄。');return}
+ }
+ if(confirm('確定要刪除嗎？')){db[type]=db[type].filter(x=>x.id!=n);save()}
+}
+function editProject(n){
+ const p=proj(n); if(!p)return;
+ const name=prompt('工程名稱',p.name); if(name===null)return;
+ const amount=prompt('工程總金額',p.amount); if(amount===null)return;
+ const status=prompt('工程狀態（進行中／已完成／暫停）',p.status); if(status===null)return;
+ p.name=name.trim()||p.name; p.amount=Number(amount)||0;
+ p.status=['進行中','已完成','暫停'].includes(status.trim())?status.trim():p.status;
+ save();
+}
+
+function addCategory(){let x=prompt('輸入新的支出項目名稱');if(x&&x.trim()){if(!db.categories.includes(x.trim()))db.categories.push(x.trim());save();document.getElementById('eCategory').value=x.trim()}}
+function detail(id){
+ const p=proj(id),t=totals(p);
+ document.getElementById('detailBox').innerHTML=`<h2>🏗️ ${esc(p.name)}</h2><p>${esc(p.address)}</p><p class="small">工程日期：${p.date}　狀態：${p.status}</p>
+ <div class="cards"><div class="card"><div class="label">工程金額</div><div class="num">${money(p.amount)}</div></div><div class="card"><div class="label">支出</div><div class="num">${money(t.ex)}</div></div><div class="card"><div class="label">工資</div><div class="num">${money(t.wa)}</div></div><div class="card"><div class="label">毛利</div><div class="num">${money(t.profit)}</div></div><div class="card"><div class="label">已收款</div><div class="num">${money(t.pa)}</div></div><div class="card"><div class="label">未收款</div><div class="num">${money(t.remain)}</div></div></div>
+ <div class="actions"><button class="primary" onclick="document.getElementById('detailModal').classList.remove('show')">關閉</button></div>`;
+ document.getElementById('detailModal').classList.add('show');
+}
+function exportData(){
+ const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+ const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+ a.download='鐵工工程系統備份_'+today+'.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function importData(ev){
+ const f=ev.target.files[0]; if(!f)return;
+ const r=new FileReader();
+ r.onload=()=>{try{const x=JSON.parse(r.result);
+  if(!x.projects||!x.expenses||!x.wages||!x.payments)throw Error();
+  if(confirm('確定用這份備份資料取代目前資料嗎？')){db=x;save();alert('資料還原完成');}
+ }catch(e){alert('備份檔格式不正確');}};
+ r.readAsText(f); ev.target.value='';
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active')});
+document.getElementById('detailModal').onclick=e=>{if(e.target.id==='detailModal')e.currentTarget.classList.remove('show')};
+document.getElementById('projectForm').onsubmit=e=>{e.preventDefault();db.projects.push({id:id(),date:pDate.value,address:pAddress.value,name:pName.value,amount:+pAmount.value,status:pStatus.value});e.target.reset();pDate.value=today;save()};
+document.getElementById('expenseForm').onsubmit=e=>{e.preventDefault();db.expenses.push({id:id(),projectId:+eProject.value,category:eCategory.value,amount:+eAmount.value,date:eDate.value,note:eNote.value});e.target.reset();eDate.value=today;save()};
+document.getElementById('wageForm').onsubmit=e=>{e.preventDefault();db.wages.push({id:id(),projectId:+wProject.value,person:wPerson.value,amount:+wAmount.value,date:wDate.value});e.target.reset();wDate.value=today;save()};
+document.getElementById('paymentForm').onsubmit=e=>{e.preventDefault();db.payments.push({id:id(),projectId:+payProject.value,amount:+payAmount.value,date:payDate.value,note:payNote.value});e.target.reset();payDate.value=today;save()};
+[pDate,eDate,wDate,payDate].forEach(x=>x.value=today);
+render();
+</script>
+</body>
+</html>
