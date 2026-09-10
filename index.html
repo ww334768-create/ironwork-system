@@ -339,6 +339,7 @@ async function loadCloudData() {
           if (parsed && parsed.projects) {
             db = parsed;
             if(!db.quotesList) db.quotesList = [];
+            if(!db.wages) db.wages = [];
             if(!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
             localStorage.setItem(KEY, JSON.stringify(db));
             statusEl.textContent = '✅ 雲端同步完成！';
@@ -360,7 +361,22 @@ async function save() {
   const statusEl = document.getElementById('syncText');
   statusEl.textContent = '⏳ 正在同步至雲端...';
   try {
-    await fetch(API_URL, { method: "POST", body: JSON.stringify({ content: JSON.stringify(db) }) });
+    await fetch(API_URL, { 
+      method: "POST", 
+      body: JSON.stringify({ 
+        content: JSON.stringify({
+          projects: db.projects,
+          expenses: db.expenses,
+          wages: db.wages,           // 👈 確保工資資料順利打包上傳
+          payments: db.payments,
+          quotesList: db.quotesList,
+          categories: db.categories,
+          historyItems: db.historyItems,
+          historySpecs: db.historySpecs,
+          historyPersons: db.historyPersons
+        }) 
+      }) 
+    });
     statusEl.textContent = '✅ 異動已成功同步至雲端！';
   } catch (err) {
     statusEl.textContent = '⚠️ 雲端同步失敗，已存於本機。';
