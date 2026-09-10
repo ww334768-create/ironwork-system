@@ -231,7 +231,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     </div>
 
     <div class="section no-print" style="max-width:850px;margin:25px auto 0 auto;">
-      <h2>📋 歷史估價單列表（點擊可查看或修改）</h2>
+      <h2>📋 歷史估價單列表（按日期最新排序）</h2>
       <div id="quoteHistoryList"></div>
     </div>
   </section>
@@ -341,6 +341,11 @@ let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
     agent: '', validDays: 7, depositPercent: 3
   }
 };
+
+// 輔助函式：按照日期由新到舊排序
+function sortByDateDesc(arr) {
+  return [...arr].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+}
 
 async function loadCloudData() {
   const statusEl = document.getElementById('syncText');
@@ -539,6 +544,8 @@ function renderQuoteHistory() {
     return;
   }
 
+  let sortedQuotes = sortByDateDesc(db.quotesList);
+
   container.innerHTML = `
     <div class="table-responsive">
       <table>
@@ -549,7 +556,7 @@ function renderQuoteHistory() {
           <th>總金額</th>
           <th>操作</th>
         </tr>
-        ${db.quotesList.map(q => `
+        ${sortedQuotes.map(q => `
           <tr>
             <td>${q.date || '-'}</td>
             <td><b>${esc(q.name || '未命名')}</b></td>
@@ -604,9 +611,10 @@ function render() {
 }
 
 function renderSelects() {
+  let sortedProjects = sortByDateDesc(db.projects);
   ['eProject', 'wProject', 'payProject'].forEach(id => {
     const el = document.getElementById(id); const old = el.value;
-    el.innerHTML = '<option value="">-- 請選擇工程 --</option>' + db.projects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
+    el.innerHTML = '<option value="">-- 請選擇工程 --</option>' + sortedProjects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
     el.value = old;
   });
   const c = document.getElementById('eCategory'); const old = c.value;
@@ -619,13 +627,12 @@ function renderSelects() {
 }
 
 function renderDashboard() {
-  // 修正：正確計算今日「新增了幾筆工程案量（筆數）」
   const dayCount = db.projects.filter(p => p.date === today).length;
   
   const mPrefix = today.slice(0, 7);
-  const mExp = sum(db.expenses.filter(x => x.date.startsWith(mPrefix)));
-  const mW = sum(db.wages.filter(x => x.date.startsWith(mPrefix)));
-  const mPay = sum(db.payments.filter(x => x.date.startsWith(mPrefix)));
+  const mExp = sum(db.expenses.filter(x => x.date && x.date.startsWith(mPrefix)));
+  const mW = sum(db.wages.filter(x => x.date && x.date.startsWith(mPrefix)));
+  const mPay = sum(db.payments.filter(x => x.date && x.date.startsWith(mPrefix)));
 
   document.getElementById('cards').innerHTML = [
     ['今日工程案量', dayCount + ' 筆'],
@@ -637,36 +644,40 @@ function renderDashboard() {
     ['總未收款', money(db.projects.reduce((s, p) => s + totals(p).remain, 0))]
   ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num">${x[1]}</div></div>`).join('');
 
-  const active = db.projects.filter(p => p.status === '進行中');
+  const active = sortByDateDesc(db.projects.filter(p => p.status === '進行中'));
   document.getElementById('dashProjects').innerHTML = active.length ? 
     `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#e87522">${money(t.profit)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">目前沒有進行中工程</div>';
 
-  const rec = db.projects.filter(p => totals(p).remain > 0);
+  const rec = sortByDateDesc(db.projects.filter(p => totals(p).remain > 0));
   document.getElementById('dashReceivables').innerHTML = rec.length ?
     `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工程總額</th><th>已收款</th><th>未收款</th></tr>${rec.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.pa)}</td><td><b style="color:#d97706">${money(t.remain)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">所有工程皆已結清無未收款</div>';
 }
 
 function renderProjects() {
-  document.getElementById('projectList').innerHTML = db.projects.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${db.projects.map(p => {
+  let sorted = sortByDateDesc(db.projects);
+  document.getElementById('projectList').innerHTML = sorted.length ?
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${sorted.map(p => {
       let t = totals(p);
       return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b>${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
     }).join('')}</table></div>` : '<div class="empty">尚無工程紀錄</div>';
 }
 
 function renderExpenses() {
-  document.getElementById('expenseList').innerHTML = db.expenses.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>項目</th><th>金額</th><th>備註</th><th>操作</th></tr>${db.expenses.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><span class="pill">${esc(x.category)}</span></td><td>${money(x.amount)}</td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('expenses',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無支出紀錄</div>';
+  let sorted = sortByDateDesc(db.expenses);
+  document.getElementById('expenseList').innerHTML = sorted.length ?
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>項目</th><th>金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><span class="pill">${esc(x.category)}</span></td><td>${money(x.amount)}</td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('expenses',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無支出紀錄</div>';
 }
 
 function renderWages() {
-  document.getElementById('wageList').innerHTML = db.wages.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>人員</th><th>工資金額</th><th>操作</th></tr>${db.wages.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${esc(x.person)}</b></td><td>${money(x.amount)}</td><td><button class="danger" onclick="del('wages',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無工資紀錄</div>';
+  let sorted = sortByDateDesc(db.wages);
+  document.getElementById('wageList').innerHTML = sorted.length ?
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>人員</th><th>工資金額</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${esc(x.person)}</b></td><td>${money(x.amount)}</td><td><button class="danger" onclick="del('wages',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無工資紀錄</div>';
 }
 
 function renderPayments() {
-  document.getElementById('paymentList').innerHTML = db.payments.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>備註</th><th>操作</th></tr>${db.payments.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
+  let sorted = sortByDateDesc(db.payments);
+  document.getElementById('paymentList').innerHTML = sorted.length ?
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
 }
 
 function uid() { return Date.now() + Math.random().toString().slice(2,6); }
