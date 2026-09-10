@@ -26,7 +26,6 @@ button.secondary{background:#173b63;color:white;border:0;padding:10px 16px;borde
 button.danger{background:#fee2e2;color:#991b1b;border:0;padding:7px 10px;border-radius:7px;cursor:pointer}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 
-/* 修正表格在手機上被擠壓變形問題 */
 .table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}
 th,td{padding:10px 8px;border-bottom:1px solid #eee;text-align:left}
@@ -56,36 +55,15 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-summary-table{width:100%;border-collapse:collapse;margin-top:6px}
 .quote-summary-table td{border:1px solid #333;padding:6px;font-size:13px;white-space:normal}
 
-/* A4 列印優化（單頁緊湊版） */
 @media print {
-  @page {
-    size: A4 portrait;
-    margin: 8mm;
-  }
+  @page { size: A4 portrait; margin: 8mm; }
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
   body { background: white; -webkit-print-color-adjust: exact; }
   .quote-paper { box-shadow: none; padding: 0; margin: 0; max-width: 100%; page-break-inside: avoid; }
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
-  
-  .quote-header h2 { font-size: 20px; }
-  .quote-table th, .quote-table td { height: 28px; padding: 2px; font-size: 13px; }
-  .quote-footer-box, .quote-summary-table td { font-size: 12px; line-height: 1.4; padding: 4px 8px; }
-  
-  input, select, textarea {
-    border: none !important;
-    background: transparent !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-    outline: none !important;
-    padding: 0 !important;
-    -webkit-appearance: none;
-  }
-  input::placeholder { color: transparent !important; }
 }
-
-@media(max-width:600px){main{padding:10px}.section{padding:12px}.quote-paper{padding:12px}}
 </style>
 </head>
 <body>
@@ -117,7 +95,6 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         <button class="primary" onclick="document.getElementById('importFile').click()">⬆ 還原資料</button>
         <input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
       </div>
-      <div class="small" style="margin-top:8px">💡 提示：本系統已連接雲端資料庫，新增資料將自動跨手機與電腦即時同步！</div>
     </div>
     <div class="cards" id="cards"></div>
     <div class="section"><h2>進行中工程概況</h2><div id="dashProjects"></div></div>
@@ -126,9 +103,12 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
   <!-- 估價報價單頁面 -->
   <section id="quotes" class="page">
-    <div class="no-print" style="max-width:850px;margin:0 auto 15px auto;display:flex;justify-content:space-between;align-items:center;">
+    <div class="no-print" style="max-width:850px;margin:0 auto 15px auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <span id="currentQuoteStatus" style="font-weight:bold;color:#173b63">📄 目前編輯：新估價單</span>
-      <button class="secondary" onclick="resetNewQuote()">＋ 開立新估價單</button>
+      <div style="display:flex;gap:8px;">
+        <button class="secondary" style="background:#059669" onclick="importFromGoogleSheetPrompt()">🔗 讀取 Google 試算表估價單</button>
+        <button class="secondary" onclick="resetNewQuote()">＋ 開立新估價單</button>
+      </div>
     </div>
 
     <div class="quote-paper">
@@ -147,7 +127,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         </div>
         <div style="flex:2;min-width:200px;">
           <label>工程名稱／客戶：</label>
-          <input id="qName" placeholder="例如：屋頂修繕工程">
+          <input id="qName" placeholder="例如：屋頂修繕工程（可先空白）">
         </div>
       </div>
 
@@ -329,29 +309,17 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 <div class="modal" id="detailModal"><div class="modalbox" id="detailBox"></div></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxsly23moU4OMHkphFlWw3jYUKsoCusS1-DE2j7sN-nvTGMTG_HV7TfAOPxxz7vbSr9/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyeT9RuVtJGXC5g95W1t3lyrBh86vJ-Kz9LVsKRcX5RfYnC8ZMQvqwAYJncaIwZAVp8/exec";
 const KEY = 'iron_work_system_data';
 const today = new Date().toISOString().split('T')[0];
 
 let currentQuoteId = null;
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
-  projects: [{ id: 1, date: today, address: '臺南市安南區溪東里府安路五段119巷28號', name: '溪東里府安路工程', amount: 43000, status: '進行中' }],
-  expenses: [], wages: [], payments: [],
-  quotesList: [],
+  projects: [], expenses: [], wages: [], payments: [], quotesList: [],
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他'],
-  historyItems: ['屋頂拆除', '屋頂鋼板', '鋼板水切', '口蓋', '中直', '水槽', '水管', '後面壁堵', '窗戶修邊', '吊車', '裝潢拆除含清運'],
-  historySpecs: ['石棉瓦裝太空包', '鋁鋅0.5mmPU雙層', '鋁鋅0.5mm', '白鐵0.4mm', 'PVC管', '15T全吊+吊卡車', '三樓天花板'],
-  historyPersons: ['阿平', '阿強'],
-  activeQuote: {
-    date: today, address: '南園街127巷59號', name: '屋頂修繕工程', note: '項目包含石棉瓦裝太空包 不含清運',
-    items: [
-      { name: '屋頂拆除', spec: '石棉瓦裝太空包', qty: 16.5, unit: '坪', price: 900, total: 14850 },
-      { name: '屋頂鋼板', spec: '鋁鋅0.5mmPU雙層', qty: 16.5, unit: '坪', price: 3300, total: 54450 },
-      { name: '鋼板水切', spec: '鋁鋅0.5mm', qty: 48, unit: '尺', price: 180, total: 8640 }
-    ],
-    agent: '', validDays: 7, depositPercent: 3
-  }
+  historyItems: [], historySpecs: [], historyPersons: ['阿平', '阿強'],
+  activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 }
 };
 
 function sortByDateDesc(arr) {
@@ -371,12 +339,10 @@ async function loadCloudData() {
           if (parsed && parsed.projects) {
             db = parsed;
             if(!db.quotesList) db.quotesList = [];
-            if(!db.historyPersons || db.historyPersons.length === 0) db.historyPersons = ['阿平', '阿強'];
+            if(!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
             localStorage.setItem(KEY, JSON.stringify(db));
-            statusEl.textContent = '✅ 雲端同步完成！已連線最新數據。';
-            render();
-            renderQuote();
-            renderQuoteHistory();
+            statusEl.textContent = '✅ 雲端同步完成！';
+            render(); renderQuote(); renderQuoteHistory();
             return;
           }
         } catch(e) {}
@@ -390,19 +356,108 @@ async function loadCloudData() {
 
 async function save() {
   localStorage.setItem(KEY, JSON.stringify(db));
-  render();
-  renderQuoteHistory();
-  
+  render(); renderQuoteHistory();
   const statusEl = document.getElementById('syncText');
-  statusEl.textContent = '⏳ 正在將新變更同步至雲端...';
+  statusEl.textContent = '⏳ 正在同步至雲端...';
   try {
-    await fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify({ content: JSON.stringify(db) })
-    });
+    await fetch(API_URL, { method: "POST", body: JSON.stringify({ content: JSON.stringify(db) }) });
     statusEl.textContent = '✅ 異動已成功同步至雲端！';
   } catch (err) {
-    statusEl.textContent = '⚠️ 雲端同步失敗，資料已先存於本機。';
+    statusEl.textContent = '⚠️ 雲端同步失敗，已存於本機。';
+  }
+}
+
+// 讀取外部 Google 試算表估價單（自動解析民國日期、地址、品項、民國轉西元）
+async function importFromGoogleSheetPrompt() {
+  let url = prompt('請輸入您現有的 Google 試算表網址 (URL)：\n(請確保該試算表權限已設為「知道連結的任何人都能檢視」)');
+  if (!url || !url.trim()) return;
+
+  const statusEl = document.getElementById('syncText');
+  statusEl.textContent = '⏳ 正在從 Google 試算表讀取資料...';
+
+  try {
+    let res = await fetch(API_URL + "?sheetUrl=" + encodeURIComponent(url.trim()));
+    let result = await res.json();
+
+    if (result.status === "error") {
+      alert('讀取失敗：' + result.message);
+      statusEl.textContent = '⚠️ 讀取試算表失敗。';
+      return;
+    }
+
+    let rows = result.rows;
+    if (!rows || rows.length === 0) {
+      alert('試算表內沒有資料！');
+      return;
+    }
+
+    let parsedDate = today;
+    let address = '';
+    let items = [];
+    let note = '';
+
+    for (let i = 0; i < rows.length; i++) {
+      let r = rows[i];
+      let rowStr = r.join(' ');
+
+      if (rowStr.includes('民國') || rowStr.includes('年') && rowStr.includes('月')) {
+        let matchMinguo = rowStr.match(/(?:民國)?\s*(\d+)\s*年\s*(\d+)\s*月\s*(\d+)\s*日/);
+        if (matchMinguo) {
+          let y = parseInt(matchMinguo[1]) + 1911;
+          let m = matchMinguo[2].padStart(2, '0');
+          let d = matchMinguo[3].padStart(2, '0');
+          parsedDate = `${y}-${m}-${d}`;
+        }
+      }
+
+      if (rowStr.includes('地址') || rowStr.includes('地點')) {
+        let addrCell = r.find(cell => String(cell).includes('園街') || String(cell).includes('路') || String(cell).includes('市') || String(cell).includes('區') || String(cell).includes('巷') || String(cell).includes('街'));
+        if (addrCell) {
+          address = String(addrCell).replace(/地點[：:]?|地址[：:]?/g, '').trim();
+        } else {
+          let clean = rowStr.replace(/地點[：:]?|地址[：:]?/g, '').trim();
+          if (clean) address = clean;
+        }
+      }
+
+      if (rowStr.includes('項目包含') || rowStr.includes('不含')) {
+        note = rowStr.trim();
+      }
+
+      let firstCol = String(r[0]).trim();
+      if (/^\d+$/.test(firstCol) && r.length >= 6) {
+        let itemName = String(r[1] || '').trim();
+        let spec = String(r[2] || '').trim();
+        let qty = parseFloat(r[3]) || 0;
+        let unit = String(r[4] || '').trim();
+        let price = parseFloat(String(r[5]).replace(/,/g, '')) || 0;
+        let itemTotal = qty * price;
+
+        if (itemName) {
+          items.push({ name: itemName, spec: spec, qty: qty, unit: unit, price: price, total: itemTotal });
+        }
+      }
+    }
+
+    db.activeQuote = {
+      date: parsedDate,
+      address: address || '未命名地址',
+      name: '', 
+      note: note,
+      agent: '',
+      validDays: 7,
+      depositPercent: 3,
+      items: items.length > 0 ? items : [{ name: '', spec: '', qty: '', unit: '', price: '', total: 0 }]
+    };
+
+    renderQuote();
+    document.getElementById('currentQuoteStatus').textContent = '📄 目前編輯：已成功從 Google 試算表匯入';
+    statusEl.textContent = '✅ Google 試算表資料匯入成功！';
+    alert('成功匯入估價單資料！\n\n・日期已自動轉換\n・地址已帶入\n・工程名稱已依您的需求保持空白\n請檢查內容後點擊「儲存估價單數據」。');
+
+  } catch (err) {
+    alert('讀取發生錯誤：' + err.toString());
+    statusEl.textContent = '⚠️ 匯入失敗。';
   }
 }
 
@@ -454,13 +509,9 @@ function updateQuoteItem(idx, key, val) {
   while (db.activeQuote.items.length <= idx) {
     db.activeQuote.items.push({ name: '', spec: '', qty: '', unit: '', price: '', total: 0 });
   }
-
   let item = db.activeQuote.items[idx];
   item[key] = (key === 'qty' || key === 'price') ? parseFloat(val) || 0 : val;
   item.total = (item.qty || 0) * (item.price || 0);
-
-  if (key === 'name' && val.trim() && !db.historyItems.includes(val.trim())) db.historyItems.push(val.trim());
-  if (key === 'spec' && val.trim() && !db.historySpecs.includes(val.trim())) db.historySpecs.push(val.trim());
 
   document.getElementById(`rowTotal_${idx}`).textContent = item.total ? '$' + Number(item.total).toLocaleString() : '';
   calcQuoteTotal();
@@ -492,10 +543,7 @@ function saveCurrentQuote() {
 
   if (currentQuoteId) {
     let idx = db.quotesList.findIndex(q => q.id === currentQuoteId);
-    if (idx !== -1) {
-      qData.id = currentQuoteId;
-      db.quotesList[idx] = qData;
-    }
+    if (idx !== -1) { qData.id = currentQuoteId; db.quotesList[idx] = qData; }
   } else {
     qData.id = uid();
     currentQuoteId = qData.id;
@@ -524,8 +572,6 @@ function resetNewQuote() {
     items: [{ name: '', spec: '', qty: '', unit: '', price: '', total: 0 }]
   };
   document.getElementById('currentQuoteStatus').textContent = '📄 目前編輯：新估價單';
-  document.getElementById('qTotalStr').value = '';
-  document.getElementById('qDepositStr').value = '';
   renderQuote();
 }
 
@@ -554,19 +600,11 @@ function renderQuoteHistory() {
     container.innerHTML = '<div class="empty">尚無歷史估價單紀錄</div>';
     return;
   }
-
   let sortedQuotes = sortByDateDesc(db.quotesList);
-
   container.innerHTML = `
     <div class="table-responsive">
       <table>
-        <tr>
-          <th>日期</th>
-          <th>工程名稱 / 客戶</th>
-          <th>地點 / 地址</th>
-          <th>總金額</th>
-          <th>操作</th>
-        </tr>
+        <tr><th>日期</th><th>工程名稱 / 客戶</th><th>地點 / 地址</th><th>總金額</th><th>操作</th></tr>
         ${sortedQuotes.map(q => `
           <tr>
             <td>${q.date || '-'}</td>
@@ -587,29 +625,19 @@ function renderQuoteHistory() {
 function convertToProject() {
   syncCurrentQuoteFromForm();
   let totalAmount = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
-  let name = db.activeQuote.name || '未命名工程';
+  let name = db.activeQuote.name || prompt('請輸入此工程的名稱：') || '未命名工程';
   let address = db.activeQuote.address || '未填寫地址';
   let date = db.activeQuote.date || today;
 
-  if (confirm(`確定要將【${name}】資料帶入並建立為工程單嗎？\n\n・日期：${date}\n・地址：${address}\n・總金額：${money(totalAmount)}\n\n(註：材料與工資等實際支出後續可自行於支出頁面填寫)`)) {
-    db.projects.push({
-      id: uid(),
-      date: date,
-      address: address,
-      name: name,
-      amount: totalAmount,
-      status: '進行中'
-    });
-    save();
-    alert('已成功新增為工程單！');
-    document.querySelector('button[data-page="projects"]').click();
-  }
+  db.projects.push({ id: uid(), date: date, address: address, name: name, amount: totalAmount, status: '進行中' });
+  save();
+  alert('已成功新增為工程單！');
+  document.querySelector('button[data-page="projects"]').click();
 }
 
 function money(n) { return '$' + Number(n || 0).toLocaleString('zh-TW'); }
 function sum(a) { return a.reduce((s, x) => s + Number(x.amount || 0), 0); }
 function proj(id) { return db.projects.find(p => p.id == id); }
-
 function totals(p) {
   let ex = sum(db.expenses.filter(x => x.projectId == p.id));
   let wa = sum(db.wages.filter(x => x.projectId == p.id));
@@ -631,15 +659,10 @@ function renderSelects() {
   const c = document.getElementById('eCategory'); const old = c.value;
   c.innerHTML = db.categories.map(x => `<option>${esc(x)}</option>`).join('');
   c.value = old || db.categories[0];
-
-  if(!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
-  const pList = document.getElementById('personHistoryList');
-  pList.innerHTML = db.historyPersons.map(x => `<option value="${esc(x)}">`).join('');
 }
 
 function renderDashboard() {
   const dayCount = db.projects.filter(p => p.date === today).length;
-  
   const mPrefix = today.slice(0, 7);
   const mExp = sum(db.expenses.filter(x => x.date && x.date.startsWith(mPrefix)));
   const mW = sum(db.wages.filter(x => x.date && x.date.startsWith(mPrefix)));
@@ -682,11 +705,9 @@ function editProject(id) {
   document.getElementById('pName').value = p.name || '';
   document.getElementById('pAmount').value = p.amount || 0;
   document.getElementById('pStatus').value = p.status || '進行中';
-  
   document.getElementById('projectFormTitle').textContent = '編輯工程資料：' + p.name;
   document.getElementById('btnProject').textContent = '💾 修改更新工程';
   document.getElementById('cancelEditProject').style.display = 'inline-block';
-  
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -721,9 +742,7 @@ function uid() { return Date.now() + Math.random().toString().slice(2,6); }
 function del(type, n) {
   if (confirm('確定要刪除這筆紀錄嗎？')) {
     db[type] = db[type].filter(x => x.id != n);
-    if (type === 'projects' && document.getElementById('editingProjectId').value == n) {
-      resetProjectForm();
-    }
+    if (type === 'projects' && document.getElementById('editingProjectId').value == n) resetProjectForm();
     save();
   }
 }
@@ -796,36 +815,23 @@ document.getElementById('projectForm').onsubmit = e => {
     let p = db.projects.find(x => x.id == editId);
     if (p) {
       targetProjectId = p.id;
-      p.date = pDate.value;
-      p.address = pAddress.value;
-      p.name = pName.value;
-      p.amount = newAmount;
-      p.status = newStatus;
+      p.date = pDate.value; p.address = pAddress.value; p.name = pName.value; p.amount = newAmount; p.status = newStatus;
     }
-    alert('工程資料已成功更新！');
   } else {
     targetProjectId = uid();
     db.projects.push({ id: targetProjectId, date: pDate.value, address: pAddress.value, name: pName.value, amount: newAmount, status: newStatus });
-    alert('已成功新增工程！');
   }
   
-  // 如果設定為「已收款完成」，自動幫忙補上或補足結清的收款紀錄
   if (newStatus === '已收款完成') {
     let currentPaid = sum(db.payments.filter(x => x.projectId == targetProjectId));
     let remaining = newAmount - currentPaid;
     if (remaining > 0) {
-      db.payments.push({
-        id: uid(),
-        projectId: targetProjectId,
-        amount: remaining,
-        date: pDate.value || today,
-        note: '狀態改為已收款完成自動結清'
-      });
+      db.payments.push({ id: uid(), projectId: targetProjectId, amount: remaining, date: pDate.value || today, note: '狀態改為已收款完成自動結清' });
     }
   }
-  
   resetProjectForm();
   save();
+  alert('工程資料儲存成功！');
 };
 
 document.getElementById('expenseForm').onsubmit = e => {
@@ -837,14 +843,8 @@ document.getElementById('expenseForm').onsubmit = e => {
 document.getElementById('wageForm').onsubmit = e => {
   e.preventDefault();
   let personName = wPerson.value.trim();
-  
   db.wages.push({ id: uid(), projectId: +wProject.value, person: personName, amount: +wAmount.value, date: wDate.value });
-  
-  if (!db.historyPersons) db.historyPersons = [];
-  if (personName && !db.historyPersons.includes(personName)) {
-    db.historyPersons.push(personName);
-  }
-
+  if (personName && !db.historyPersons.includes(personName)) db.historyPersons.push(personName);
   e.target.reset(); wDate.value = today; save();
 };
 
@@ -853,25 +853,14 @@ document.getElementById('paymentForm').onsubmit = e => {
   let pId = +payProject.value;
   let payAmt = +payAmount.value;
   db.payments.push({ id: uid(), projectId: pId, amount: payAmt, date: payDate.value, note: payNote.value });
-  
-  // 自動檢查該工程是否已收齊款項，若收齊則將工程狀態改為「已收款完成」
   let p = db.projects.find(x => x.id == pId);
-  if (p) {
-    let totalPaid = sum(db.payments.filter(x => x.projectId == pId));
-    if (totalPaid >= p.amount) {
-      p.status = '已收款完成';
-    }
-  }
-
+  if (p && sum(db.payments.filter(x => x.projectId == pId)) >= p.amount) p.status = '已收款完成';
   e.target.reset(); payDate.value = today; save();
 };
 
 [pDate, eDate, wDate, payDate].forEach(x => x.value = today);
 
-render();
-renderQuote();
-renderQuoteHistory();
-loadCloudData();
+render(); renderQuote(); renderQuoteHistory(); loadCloudData();
 </script>
 </body>
 </html>
