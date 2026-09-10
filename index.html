@@ -296,8 +296,9 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         <div class="grid">
           <div><label>選擇工程</label><select id="payProject" required></select></div>
           <div><label>收款金額</label><input id="payAmount" type="number" min="0" required></div>
+          <div><label>折扣金額 (少收/優惠)</label><input id="payDiscount" type="number" min="0" value="0" required></div>
           <div><label>日期</label><input id="payDate" type="date" required></div>
-          <div><label>備註</label><input id="payNote" placeholder="例如：訂金、尾款、訂金支票"></div>
+          <div><label>備註</label><input id="payNote" placeholder="例如：訂金、尾款、支票"></div>
         </div>
         <div class="actions"><button class="primary" id="btnPayment">新增收款紀錄</button></div>
       </form>
@@ -367,7 +368,7 @@ async function save() {
         content: JSON.stringify({
           projects: db.projects,
           expenses: db.expenses,
-          wages: db.wages,           // 👈 確保工資資料順利打包上傳
+          wages: db.wages,
           payments: db.payments,
           quotesList: db.quotesList,
           categories: db.categories,
@@ -651,13 +652,18 @@ function convertToProject() {
 }
 
 function money(n) { return '$' + Number(n || 0).toLocaleString('zh-TW'); }
-function sum(a) { return a.reduce((s, x) => s + Number(x.amount || 0), 0); }
+function sum(a) { return a.reduce((s, x) => s + Number(x.amount || 0) + Number(x.discount || 0), 0); }
+function totalReceivedAndDiscount(pId) {
+  return db.payments.filter(x => x.projectId == pId).reduce((s, x) => s + Number(x.amount || 0) + Number(x.discount || 0), 0);
+}
 function proj(id) { return db.projects.find(p => p.id == id); }
 function totals(p) {
   let ex = sum(db.expenses.filter(x => x.projectId == p.id));
   let wa = sum(db.wages.filter(x => x.projectId == p.id));
-  let pa = sum(db.payments.filter(x => x.projectId == p.id));
-  return { ex, wa, pa, profit: p.amount - ex - wa, remain: p.amount - pa };
+  let receivedTotal = totalReceivedAndDiscount(p.id);
+  let profit = p.amount - ex - wa;
+  let remain = p.amount - receivedTotal;
+  return { ex, wa, pa: receivedTotal, profit, remain: remain < 0 ? 0 : remain };
 }
 
 function render() {
@@ -750,7 +756,7 @@ function renderWages() {
 function renderPayments() {
   let sorted = sortByDateDesc(db.payments);
   document.getElementById('paymentList').innerHTML = sorted.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>折扣金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td><span style="color:#e87522">${money(x.discount || 0)}</span></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
 }
 
 function uid() { return Date.now() + Math.random().toString().slice(2,6); }
@@ -838,10 +844,10 @@ document.getElementById('projectForm').onsubmit = e => {
   }
   
   if (newStatus === '已收款完成') {
-    let currentPaid = sum(db.payments.filter(x => x.projectId == targetProjectId));
+    let currentPaid = totalReceivedAndDiscount(targetProjectId);
     let remaining = newAmount - currentPaid;
     if (remaining > 0) {
-      db.payments.push({ id: uid(), projectId: targetProjectId, amount: remaining, date: pDate.value || today, note: '狀態改為已收款完成自動結清' });
+      db.payments.push({ id: uid(), projectId: targetProjectId, amount: remaining, discount: 0, date: pDate.value || today, note: '狀態改為已收款完成自動結清' });
     }
   }
   resetProjectForm();
@@ -867,10 +873,31 @@ document.getElementById('paymentForm').onsubmit = e => {
   e.preventDefault();
   let pId = +payProject.value;
   let payAmt = +payAmount.value;
-  db.payments.push({ id: uid(), projectId: pId, amount: payAmt, date: payDate.value, note: payNote.value });
-  let p = db.projects.find(x => x.id == pId);
-  if (p && sum(db.payments.filter(x => x.projectId == pId)) >= p.amount) p.status = '已收款完成';
-  e.target.reset(); payDate.value = today; save();
+  let discAmt = +payDiscount.value || 0;
+  let currentTotalPaid = totalReceivedAndDiscount(pId);
+  let p = proj(pId);
+  
+  if (!p) { alert('請選擇有效的工程！'); return; }
+
+  let maxAllowed = p.amount - currentTotalPaid;
+  if (maxAllowed <= 0) {
+    alert('⚠️ 防呆警示：此工程已經全數收滿（無剩餘未收款），無法再新增收款！');
+    return;
+  }
+
+  if ((payAmt + discAmt) > maxAllowed) {
+    alert(`⚠️ 申報金額加折扣（$${payAmt + discAmt}）超過了此工程目前的未收款餘額（$${maxAllowed}），請重新確認金額與折扣！`);
+    return;
+  }
+
+  db.payments.push({ id: uid(), projectId: pId, amount: payAmt, discount: discAmt, date: payDate.value, note: payNote.value });
+  
+  if (totalReceivedAndDiscount(pId) >= p.amount) {
+    p.status = '已收款完成';
+  }
+
+  e.target.reset(); payDate.value = today; payDiscount.value = 0; save();
+  alert('收款紀錄新增成功！');
 };
 
 [pDate, eDate, wDate, payDate].forEach(x => x.value = today);
