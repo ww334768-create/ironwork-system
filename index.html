@@ -679,14 +679,39 @@ function render() {
 
 function renderSelects() {
   let sortedProjects = sortByDateDesc(db.projects);
-  ['eProject', 'wProject', 'payProject'].forEach(id => {
-    const el = document.getElementById(id); const old = el.value;
+  
+  // 1. 針對工資與收款工程選單（維持全部顯示）
+  ['wProject', 'payProject'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const old = el.value;
     el.innerHTML = '<option value="">-- 請選擇工程 --</option>' + sortedProjects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
     el.value = old;
   });
-  const c = document.getElementById('eCategory'); const old = c.value;
-  c.innerHTML = db.categories.map(x => `<option>${esc(x)}</option>`).join('');
-  c.value = old || db.categories[0];
+
+  // 2. 針對「工程支出」選擇工程選單（自動過濾：已新增支出 且 已收款完成 的工程不顯示）
+  const eEl = document.getElementById('eProject');
+  if (eEl) {
+    const oldE = eEl.value;
+    let filteredProjects = sortedProjects.filter(p => {
+      let hasExpense = db.expenses.some(e => e.projectId == p.id);
+      let isPaidComplete = (p.status === '已收款完成');
+      // 條件符合：已有支出且狀態為已收款完成 -> 隱藏不顯示
+      if (hasExpense && isPaidComplete) {
+        return false;
+      }
+      return true;
+    });
+    eEl.innerHTML = '<option value="">-- 請選擇工程 --</option>' + filteredProjects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
+    eEl.value = oldE;
+  }
+
+  const c = document.getElementById('eCategory'); 
+  if(c) {
+    const oldC = c.value;
+    c.innerHTML = db.categories.map(x => `<option>${esc(x)}</option>`).join('');
+    c.value = oldC || db.categories[0];
+  }
 
   const pList = document.getElementById('personHistoryList');
   if (pList) {
@@ -996,7 +1021,7 @@ document.getElementById('paymentForm').onsubmit = e => {
 
   let maxAllowed = p.amount - currentTotalPaid;
   if (maxAllowed <= 0) {
-    alert('⚠️ 防呆警示：此工程已經全數收滿（無剩餘未收款），無法再新增收款！');
+    alert('⚠️ 防呆警示 : 此工程已經全數收滿（無剩餘未收款），無法再新增收款！');
     return;
   }
 
