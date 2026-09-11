@@ -54,7 +54,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 /* 收支明細折疊群組樣式 */
 .group-header-row { background:#f9fafb; cursor:pointer; font-weight:bold; }
 .group-header-row:hover { background:#f3f4f6; }
-.sub-table-row td { background:#fdfdfd; padding-left:24px; border-bottom:1px dashed #e5e7eb; }
+.sub-table-row td { background:#fdfdfd; padding:6px 8px; border-bottom:1px dashed #e5e7eb; font-size:13px; }
 .toggle-icon { display:inline-block; width:20px; transition:transform 0.2s; }
 .group-open .toggle-icon { transform:rotate(90deg); }
 
@@ -226,16 +226,24 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
       <table class="quote-summary-table">
         <tr>
-          <td style="width:50%">
-            工程總金額：<input id="qTotalStr" style="width:60%;display:inline-block;font-weight:bold" placeholder=""> 元整
+          <td style="width:50%; vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>工程總金額：</span>
+              <input id="qTotalStr" style="flex-grow:1; font-weight:bold; height:28px;" placeholder="">
+              <span>元整</span>
+            </div>
           </td>
           <td style="width:50%" rowspan="2" valign="top">
             客戶簽名：
           </td>
         </tr>
         <tr>
-          <td>
-            收訂金額：<input id="qDepositStr" style="width:60%;display:inline-block;font-weight:bold" placeholder=""> 元整
+          <td style="vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>收訂金額：</span>
+              <input id="qDepositStr" style="flex-grow:1; font-weight:bold; height:28px;" placeholder="">
+              <span>元整</span>
+            </div>
           </td>
         </tr>
         <tr>
@@ -868,9 +876,12 @@ function renderExpenses() {
       html += `
         <tr class="${groupId} sub-table-row" style="display:none;">
           <td colspan="4">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px;">
-              <span>📅 ${x.date} ｜ 項目：<b>${esc(x.category)}</b> ｜ 金額：<b>${money(x.amount)}</b> ｜ 備註：${esc(x.note || '-')}</span>
-              <button class="danger" onclick="del('expenses', ${x.id}); event.stopPropagation();">刪除</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px;">
+              <span style="width:120px; flex-shrink:0;">📅 ${x.date}</span>
+              <span style="width:120px; flex-shrink:0;">項目：<b>${esc(x.category)}</b></span>
+              <span style="width:130px; flex-shrink:0;">金額：<b style="color:#e87522;">${money(x.amount)}</b></span>
+              <span style="flex-grow:1; color:#4b5563;">備註：${esc(x.note || '-')}</span>
+              <button class="danger" style="flex-shrink:0;" onclick="del('expenses', ${x.id}); event.stopPropagation();">刪除</button>
             </div>
           </td>
         </tr>
@@ -911,11 +922,11 @@ function renderWages() {
       html += `
         <tr class="${groupId} sub-table-row" style="display:none;">
           <td colspan="4">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; flex-wrap:wrap;">
-              <div style="display:flex; gap:10px; align-items:center; flex-grow:1;">
-                <span>📅 <input type="date" value="${x.date}" style="width:130px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
-                <span>👤 <input list="personHistoryList" value="${esc(x.person)}" style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()"></span>
-                <span>💰 <input type="number" value="${x.amount}" style="width:100px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()"></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px; flex-wrap:wrap;">
+              <div style="display:flex; gap:15px; align-items:center; flex-grow:1;">
+                <span style="width:150px;">📅 <input type="date" value="${x.date}" style="width:130px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
+                <span style="width:140px;">👤 <input list="personHistoryList" value="${esc(x.person)}" style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()"></span>
+                <span style="width:130px;">💰 <input type="number" value="${x.amount}" style="width:100px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()"></span>
               </div>
               <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
             </div>
