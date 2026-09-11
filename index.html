@@ -910,6 +910,13 @@ function toggleGroup(id) {
   });
 }
 
+function getLatestRecordDate(projectId, type) {
+  let records = db[type].filter(x => x.projectId == projectId);
+  if (records.length === 0) return '0000-00-00';
+  let sorted = sortByDateDesc(records);
+  return sorted[0].date || '0000-00-00';
+}
+
 function renderExpenses() {
   let container = document.getElementById('expenseList');
   let projectsWithExpenses = db.projects.filter(p => db.expenses.some(e => e.projectId == p.id));
@@ -918,6 +925,12 @@ function renderExpenses() {
     container.innerHTML = '<div class="empty">尚無支出紀錄</div>';
     return;
   }
+
+  projectsWithExpenses.sort((a, b) => {
+    let dateA = getLatestRecordDate(a.id, 'expenses');
+    let dateB = getLatestRecordDate(b.id, 'expenses');
+    return new Date(dateB) - new Date(dateA);
+  });
 
   let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>支出筆數</th><th>總金額</th><th>展開明細</th></tr>`;
   
@@ -965,6 +978,12 @@ function renderWages() {
     return;
   }
 
+  projectsWithWages.sort((a, b) => {
+    let dateA = getLatestRecordDate(a.id, 'wages');
+    let dateB = getLatestRecordDate(b.id, 'wages');
+    return new Date(dateB) - new Date(dateA);
+  });
+
   let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工資筆數</th><th>總金額</th><th>展開明細</th></tr>`;
   
   projectsWithWages.forEach(p => {
@@ -990,7 +1009,7 @@ function renderWages() {
           <td colspan="4">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; padding-left:10px; flex-wrap:wrap;">
               <div style="display:flex; gap:10px; align-items:center; flex-grow:1; flex-wrap:wrap;">
-                <span style="width:140px;">📅 <input type="date" value="${x.date}" style="width:120px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
+                <span style="width:145px;">📅 <input type="date" value="${x.date}" style="width:115px; display:inline-block; border:1px solid #d1d5db; border-radius:6px; padding:4px; background:white;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
                 <span style="width:130px;">👤 <select style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()">${optionsHtml}</select></span>
                 <span style="width:110px;">💰 <input type="number" value="${x.amount}" placeholder="工資" style="width:90px; display:inline-block;" oninput="updateWageValueOnly(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()" title="工資"></span>
                 <span style="width:110px;">🎁 <input type="number" value="${x.bonus || 0}" placeholder="獎金" style="width:90px; display:inline-block;" oninput="updateWageValueOnly(${x.id}, 'bonus', this.value)" onclick="event.stopPropagation()" title="獎金"></span>
