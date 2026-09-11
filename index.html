@@ -135,7 +135,13 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     </div>
 
     <div class="section">
-      <h2>📊 歷史累計與總結算（所有歷年工程總計）</h2>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+        <h2 style="margin:0;">📊 歷史累計與總結算</h2>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label for="summaryYearSelect" style="margin:0; font-weight:bold;">選擇統計年度：</label>
+          <select id="summaryYearSelect" onchange="renderDashboard()" style="width:140px; padding:6px 8px; font-weight:bold; color:#173b63;"></select>
+        </div>
+      </div>
       <div class="cards" id="totalCards"></div>
     </div>
 
@@ -779,12 +785,56 @@ function renderDashboard() {
     ['本月淨利 (收款-支出-工資)', money(mPay - mExp - mW)]
   ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num">${x[1]}</div></div>`).join('');
 
-  // 歷史累計與總結算數據（不限月份，全部總和）
-  const totalProjectsAmount = db.projects.reduce((s, p) => s + Number(p.amount || 0), 0);
-  const totalExp = sum(db.expenses);
-  const totalWages = sum(db.wages);
-  const totalPaid = sum(db.payments);
-  const totalRemain = db.projects.reduce((s, p) => s + totals(p).remain, 0);
+  // 年度選擇器邏輯
+  const yearSelect = document.getElementById('summaryYearSelect');
+  let currentSelectedYear = yearSelect ? yearSelect.value : 'all';
+
+  // 收集所有出現過的年度（從專案日期取出年份，並轉成民國年）
+  let yearsSet = new Set();
+  db.projects.forEach(p => {
+    if (p.date) {
+      let adYear = parseInt(p.date.split('-')[0]);
+      let minguoYear = adYear - 1911;
+      yearsSet.add(minguoYear);
+    }
+  });
+  let sortedYears = Array.from(yearsSet).sort((a, b) => b - a); // 由新到舊排序
+
+  if (yearSelect) {
+    let optionsHtml = '<option value="all">🌐 全部歷年總計</option>';
+    sortedYears.forEach(y => {
+      optionsHtml += `<option value="${y}" ${currentSelectedYear == y ? 'selected' : ''}>民國 ${y} 年 (${y + 1911})</option>`;
+    });
+    yearSelect.innerHTML = optionsHtml;
+    currentSelectedYear = yearSelect.value;
+  }
+
+  // 根據選擇的年度過濾專案
+  let filteredProjects = db.projects;
+  if (currentSelectedYear !== 'all') {
+    filteredProjects = db.projects.filter(p => {
+      if (!p.date) return false;
+      let adYear = parseInt(p.date.split('-')[0]);
+      return (adYear - 1911) == parseInt(currentSelectedYear);
+    });
+  }
+
+  let filteredProjectIds = new Set(filteredProjects.map(p => p.id));
+
+  // 計算選定年度的累計數據
+  const totalProjectsAmount = filteredProjects.reduce((s, p) => s + Number(p.amount || 0), 0);
+  
+  // 針對支出、工資、收款：若選擇特定年度，則只計算該年度內發生的紀錄
+  let filteredExpenses = currentSelectedYear === 'all' ? db.expenses : db.expenses.filter(x => x.date && (parseInt(x.date.split('-')[0]) - 1911) == parseInt(currentSelectedYear));
+  let filteredWages = currentSelectedYear === 'all' ? db.wages : db.wages.filter(x => x.date && (parseInt(x.date.split('-')[0]) - 1911) == parseInt(currentSelectedYear));
+  let filteredPayments = currentSelectedYear === 'all' ? db.payments : db.payments.filter(x => x.date && (parseInt(x.date.split('-')[0]) - 1911) == parseInt(currentSelectedYear));
+
+  const totalExp = sum(filteredExpenses);
+  const totalWages = sum(filteredWages);
+  const totalPaid = sum(filteredPayments);
+  
+  // 未收款維持以過濾後的工程來計算剩餘未收
+  const totalRemain = filteredProjects.reduce((s, p) => s + totals(p).remain, 0);
   const totalNetProfit = totalPaid - totalExp - totalWages;
 
   document.getElementById('totalCards').innerHTML = [
