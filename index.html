@@ -326,6 +326,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div><label>選擇工程</label><select id="wProject" required></select></div>
           <div><label>人員姓名</label><select id="wPerson" required></select></div>
           <div><label>工資金額</label><input id="wAmount" type="number" min="0" required></div>
+          <div><label>獎金 (選填)</label><input id="wBonus" type="number" min="0" value="0"></div>
           <div><label>日期</label><input id="wDate" type="date" required></div>
         </div>
         <div class="actions">
@@ -397,6 +398,8 @@ async function loadCloudData() {
             db = parsed;
             if(!db.quotesList) db.quotesList = [];
             if(!db.wages) db.wages = [];
+            // 兼容舊資料：若無 bonus 欄位補 0
+            db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
             if(!db.historyPersons) db.historyPersons = [];
             db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
             localStorage.setItem(KEY, JSON.stringify(db));
@@ -452,7 +455,7 @@ function importFromPastePrompt() {
   let note = '';
 
   for (let i = 0; i < lines.length; i++) {
-    let r = lines[i].filter(c => c !== ''); // 過濾掉空白欄位
+    let r = lines[i].filter(c => c !== ''); 
     let rowStr = r.join(' ');
 
     if (rowStr.includes('民國') || (rowStr.includes('年') && rowStr.includes('月'))) {
@@ -476,10 +479,7 @@ function importFromPastePrompt() {
       note = rowStr.trim();
     }
 
-    // 智能判斷品項列：只要非表頭、且有包含數量與單價（通常長度大於等於5或6個有效欄位）
     if (r.length >= 5 && !rowStr.includes('工程項目') && !rowStr.includes('中華民國') && !rowStr.includes('地點')) {
-      // 尋找可能的欄位：名稱、規格、數量、單位、單價、金額
-      // 如果第一欄是數字序號（例如 1, 2, 3），我們從第二欄開始抓
       let startIndex = /^\d+$/.test(r[0]) ? 1 : 0;
       
       let itemName = r[startIndex] || '';
@@ -488,7 +488,6 @@ function importFromPastePrompt() {
       let unit = r[startIndex + 3] || '';
       let price = parseFloat(String(r[startIndex + 4] || '').replace(/,/g, ''));
 
-      // 如果抓出來的 qty 跟 price 都是數字，或者 itemName 有值
       if (itemName && !isNaN(qty) && !isNaN(price)) {
         items.push({
           name: itemName,
@@ -706,7 +705,7 @@ function convertToProject() {
 }
 
 function money(n) { return '$' + Number(n || 0).toLocaleString('zh-TW'); }
-function sum(a) { return a.reduce((s, x) => s + Number(x.amount || 0) + Number(x.discount || 0), 0); }
+function sum(a) { return a.reduce((s, x) => s + Number(x.amount || 0) + Number(x.discount || 0) + Number(x.bonus || 0), 0); }
 function totalReceivedAndDiscount(pId) {
   return db.payments.filter(x => x.projectId == pId).reduce((s, x) => s + Number(x.amount || 0) + Number(x.discount || 0), 0);
 }
@@ -896,7 +895,7 @@ function renderExpenses() {
   let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>支出筆數</th><th>總金額</th><th>展開明細</th></tr>`;
   
   projectsWithExpenses.forEach(p => {
-    let pExpenses = db.expenses.filter(e => e.projectId == p.id);
+    let pExpenses = sortByDateDesc(db.expenses.filter(e => e.projectId == p.id));
     let pTotal = sum(pExpenses);
     let groupId = 'exp_group_' + p.id;
 
@@ -942,7 +941,7 @@ function renderWages() {
   let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工資筆數</th><th>總金額</th><th>展開明細</th></tr>`;
   
   projectsWithWages.forEach(p => {
-    let pWages = db.wages.filter(w => w.projectId == p.id);
+    let pWages = sortByDateDesc(db.wages.filter(w => w.projectId == p.id));
     let pTotal = sum(pWages);
     let groupId = 'wage_group_' + p.id;
 
@@ -957,14 +956,17 @@ function renderWages() {
 
     pWages.forEach(x => {
       let optionsHtml = (db.historyPersons || []).map(person => `<option ${person === x.person ? 'selected' : ''}>${esc(person)}</option>`).join('');
+      let subTotal = Number(x.amount || 0) + Number(x.bonus || 0);
       html += `
         <tr class="${groupId} sub-table-row" style="display:none;">
           <td colspan="4">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px; flex-wrap:wrap;">
-              <div style="display:flex; gap:15px; align-items:center; flex-grow:1;">
-                <span style="width:150px;">📅 <input type="date" value="${x.date}" style="width:130px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
-                <span style="width:150px;">👤 <select style="width:120px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()">${optionsHtml}</select></span>
-                <span style="width:130px;">💰 <input type="number" value="${x.amount}" style="width:100px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()"></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; padding-left:10px; flex-wrap:wrap;">
+              <div style="display:flex; gap:10px; align-items:center; flex-grow:1; flex-wrap:wrap;">
+                <span style="width:140px;">📅 <input type="date" value="${x.date}" style="width:120px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
+                <span style="width:130px;">👤 <select style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()">${optionsHtml}</select></span>
+                <span style="width:110px;">💰 <input type="number" value="${x.amount}" placeholder="工資" style="width:90px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()" title="工資"></span>
+                <span style="width:110px;">🎁 <input type="number" value="${x.bonus || 0}" placeholder="獎金" style="width:90px; display:inline-block;" onchange="updateWageField(${x.id}, 'bonus', this.value)" onclick="event.stopPropagation()" title="獎金"></span>
+                <span style="font-size:12px; color:#6b7280;">(小計: <b style="color:#e87522">${money(subTotal)}</b>)</span>
               </div>
               <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
             </div>
@@ -981,8 +983,8 @@ function renderWages() {
 function updateWageField(id, key, val) {
   let w = db.wages.find(x => x.id == id);
   if (!w) return;
-  if (key === 'amount') {
-    w.amount = parseFloat(val) || 0;
+  if (key === 'amount' || key === 'bonus') {
+    w[key] = parseFloat(val) || 0;
   } else if (key === 'person') {
     w.person = val.trim();
     if (w.person && !db.historyPersons.includes(w.person)) {
@@ -1038,7 +1040,7 @@ function detail(id) {
     <div class="cards">
       <div class="card"><div class="label">工程總金額</div><div class="num">${money(p.amount)}</div></div>
       <div class="card"><div class="label">材料／雜支</div><div class="num">${money(t.ex)}</div></div>
-      <div class="card"><div class="label">總工資</div><div class="num">${money(t.wa)}</div></div>
+      <div class="card"><div class="label">總工資(含獎金)</div><div class="num">${money(t.wa)}</div></div>
       <div class="card"><div class="label">工程剩餘／毛利</div><div class="num" style="color:#e87522">${money(t.profit)}</div></div>
       <div class="card"><div class="label">已收款</div><div class="num">${money(t.pa)}</div></div>
       <div class="card"><div class="label">未收款</div><div class="num" style="color:#d97706">${money(t.remain)}</div></div>
@@ -1115,9 +1117,16 @@ document.getElementById('expenseForm').onsubmit = e => {
 document.getElementById('wageForm').onsubmit = e => {
   e.preventDefault();
   let personName = wPerson.value.trim();
-  db.wages.push({ id: uid(), projectId: +wProject.value, person: personName, amount: +wAmount.value, date: wDate.value });
+  db.wages.push({ 
+    id: uid(), 
+    projectId: +wProject.value, 
+    person: personName, 
+    amount: +wAmount.value, 
+    bonus: +wBonus.value || 0, 
+    date: wDate.value 
+  });
   if (personName && !db.historyPersons.includes(personName)) db.historyPersons.push(personName);
-  e.target.reset(); wDate.value = today; save();
+  e.target.reset(); wDate.value = today; wBonus.value = 0; save();
 };
 
 document.getElementById('paymentForm').onsubmit = e => {
