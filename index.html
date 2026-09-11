@@ -779,12 +779,12 @@ function resetProjectForm() {
 }
 
 function toggleGroup(id) {
-  let el = document.getElementById(id);
-  if (el) {
-    el.classList.toggle('group-open');
-    let rows = document.querySelectorAll('.' + id);
-    rows.forEach(r => r.style.display = r.style.display === 'none' ? 'table-row' : 'none');
-  }
+  let rows = document.querySelectorAll('.' + id);
+  let headerRow = document.getElementById('header_' + id);
+  let isCurrentlyOpen = headerRow.classList.toggle('group-open');
+  rows.forEach(r => {
+    r.style.display = isCurrentlyOpen ? 'table-row' : 'none';
+  });
 }
 
 function renderExpenses() {
@@ -796,7 +796,7 @@ function renderExpenses() {
     return;
   }
 
-  let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>支出筆數</th><th>總金額</th><th>操作</th></tr>`;
+  let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>支出筆數</th><th>總金額</th><th>展開明細</th></tr>`;
   
   projectsWithExpenses.forEach(p => {
     let pExpenses = db.expenses.filter(e => e.projectId == p.id);
@@ -804,11 +804,11 @@ function renderExpenses() {
     let groupId = 'exp_group_' + p.id;
 
     html += `
-      <tr class="group-header-row" onclick="toggleGroup('${groupId}')" id="header_${groupId}">
+      <tr class="group-header-row" id="header_${groupId}" onclick="toggleGroup('${groupId}')">
         <td><span class="toggle-icon">▶</span> <b>${esc(p.name)}</b></td>
         <td>${pExpenses.length} 筆</td>
         <td><b style="color:#e87522">${money(pTotal)}</b></td>
-        <td>點擊展開明細</td>
+        <td><span style="color:#173b63;text-decoration:underline;">點擊展開明細 ▼</span></td>
       </tr>
     `;
 
@@ -839,7 +839,7 @@ function renderWages() {
     return;
   }
 
-  let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工資筆數</th><th>總金額</th><th>操作</th></tr>`;
+  let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工資筆數</th><th>總金額</th><th>展開明細</th></tr>`;
   
   projectsWithWages.forEach(p => {
     let pWages = db.wages.filter(w => w.projectId == p.id);
@@ -847,11 +847,11 @@ function renderWages() {
     let groupId = 'wage_group_' + p.id;
 
     html += `
-      <tr class="group-header-row" onclick="toggleGroup('${groupId}')" id="header_${groupId}">
+      <tr class="group-header-row" id="header_${groupId}" onclick="toggleGroup('${groupId}')">
         <td><span class="toggle-icon">▶</span> <b>${esc(p.name)}</b></td>
         <td>${pWages.length} 筆</td>
         <td><b style="color:#e87522">${money(pTotal)}</b></td>
-        <td>點擊展開明細</td>
+        <td><span style="color:#173b63;text-decoration:underline;">點擊展開明細 ▼</span></td>
       </tr>
     `;
 
@@ -861,9 +861,9 @@ function renderWages() {
           <td colspan="4">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; flex-wrap:wrap;">
               <div style="display:flex; gap:10px; align-items:center; flex-grow:1;">
-                <span>📅 <input type="date" value="${x.date}" style="width:130px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)"></span>
-                <span>👤 <input list="personHistoryList" value="${esc(x.person)}" style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)"></span>
-                <span>💰 <input type="number" value="${x.amount}" style="width:100px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)"></span>
+                <span>📅 <input type="date" value="${x.date}" style="width:130px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
+                <span>👤 <input list="personHistoryList" value="${esc(x.person)}" style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()"></span>
+                <span>💰 <input type="number" value="${x.amount}" style="width:100px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()"></span>
               </div>
               <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
             </div>
