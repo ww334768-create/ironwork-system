@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>鐵工工程管理系統</title>
+<title>郭子郭工作管理系統</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,"Noto Sans TC",sans-serif;background:#f4f6f8;color:#1f2937}
 header{background:linear-gradient(135deg,#173b63,#e87522);color:white;padding:22px 28px}
@@ -100,7 +100,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 </head>
 <body>
 <header>
-  <h1>🏗️ 鐵工工程管理系統</h1>
+  <h1>🏗️ 郭子郭工作管理系統</h1>
   <p>工程、估價單、支出、工資與損益一站管理 (☁️ 雲端同步版)</p>
 </header>
 
@@ -135,7 +135,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     </div>
 
     <div class="section">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; padding-right:15px;">
         <h2 style="margin:0;">📊 歷史累計與總結算</h2>
         <div style="display:flex; align-items:center; gap:8px;">
           <label for="summaryYearSelect" style="margin:0; font-weight:bold;">選擇統計年度：</label>
@@ -1064,7 +1064,7 @@ function detail(id) {
 function exportData() {
   const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = '鐵工系統備份_' + today + '.json'; a.click();
+  a.download = '郭子郭系統備份_' + today + '.json'; a.click();
 }
 
 function importData(ev) {
