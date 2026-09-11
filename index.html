@@ -370,6 +370,36 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   </div>
 </div>
 
+<!-- 工資編輯互動視窗 -->
+<div class="modal" id="wageEditModal">
+  <div class="modalbox" style="max-width:450px;">
+    <h2>✏️ 編輯工資紀錄</h2>
+    <input type="hidden" id="editWageId">
+    <div style="display:flex; flex-direction:column; gap:12px; margin-top:15px;">
+      <div>
+        <label>日期</label>
+        <input type="date" id="editWageDate">
+      </div>
+      <div>
+        <label>人員姓名</label>
+        <select id="editWagePerson"></select>
+      </div>
+      <div>
+        <label>工資金額</label>
+        <input type="number" id="editWageAmount" min="0">
+      </div>
+      <div>
+        <label>獎金 (選填)</label>
+        <input type="number" id="editWageBonus" min="0">
+      </div>
+    </div>
+    <div class="actions" style="justify-content:flex-end; margin-top:20px;">
+      <button class="secondary" onclick="document.getElementById('wageEditModal').classList.remove('show')">取消</button>
+      <button class="primary" onclick="saveEditedWage()">💾 儲存修改</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="detailModal"><div class="modalbox" id="detailBox"></div></div>
 
 <script>
@@ -454,28 +484,6 @@ async function save() {
   } catch (err) {
     statusEl.textContent = '⚠️ 雲端同步失敗，已存於本機。';
   }
-}
-
-async function saveSilent() {
-  localStorage.setItem(KEY, JSON.stringify(db));
-  try {
-    await fetch(API_URL, { 
-      method: "POST", 
-      body: JSON.stringify({ 
-        content: JSON.stringify({
-          projects: db.projects,
-          expenses: db.expenses,
-          wages: db.wages,
-          payments: db.payments,
-          quotesList: db.quotesList,
-          categories: db.categories,
-          historyItems: db.historyItems,
-          historySpecs: db.historySpecs,
-          historyPersons: db.historyPersons
-        }) 
-      }) 
-    });
-  } catch (err) {}
 }
 
 function openImportModal() {
@@ -1048,7 +1056,6 @@ function renderWages() {
     `;
 
     pWages.forEach(x => {
-      let optionsHtml = (db.historyPersons || []).map(person => `<option ${person === x.person ? 'selected' : ''}>${esc(person)}</option>`).join('');
       let subTotal = Number(x.amount || 0) + Number(x.bonus || 0);
       html += `
         <tr class="${groupId} sub-table-row" style="display:${isOpen ? 'table-row' : 'none'};">
@@ -1056,10 +1063,13 @@ function renderWages() {
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px;">
               <span style="width:120px; flex-shrink:0;">📅 ${x.date}</span>
               <span style="width:120px; flex-shrink:0;">人員：<b>${esc(x.person)}</b></span>
-              <span style="width:120px; flex-shrink:0;">工資：<b style="color:#173b63;">${money(x.amount)}</b></span>
-              <span style="width:120px; flex-shrink:0;">獎金：<b style="color:#e87522;">${money(x.bonus || 0)}</b></span>
+              <span style="width:110px; flex-shrink:0;">工資：<b style="color:#173b63;">${money(x.amount)}</b></span>
+              <span style="width:110px; flex-shrink:0;">獎金：<b style="color:#e87522;">${money(x.bonus || 0)}</b></span>
               <span style="flex-grow:1; color:#6b7280;">(小計: <b>${money(subTotal)}</b>)</span>
-              <button class="danger" style="flex-shrink:0;" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="secondary" style="padding:7px 10px; font-size:13px;" onclick="openEditWageModal(${x.id}); event.stopPropagation();">編輯</button>
+                <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
+              </div>
             </div>
           </td>
         </tr>
@@ -1071,32 +1081,33 @@ function renderWages() {
   container.innerHTML = html;
 }
 
-function updateWageValueOnly(id, key, val) {
+function openEditWageModal(id) {
   let w = db.wages.find(x => x.id == id);
   if (!w) return;
-  w[key] = parseFloat(val) || 0;
-  let subTotal = Number(w.amount || 0) + Number(w.bonus || 0);
-  let subEl = document.getElementById(`wage_subtotal_${id}`);
-  if (subEl) {
-    subEl.innerHTML = `(小計: <b style="color:#e87522">${money(subTotal)}</b>)`;
-  }
-  saveSilent();
+  document.getElementById('editWageId').value = w.id;
+  document.getElementById('editWageDate').value = w.date || today;
+  document.getElementById('editWageAmount').value = w.amount || 0;
+  document.getElementById('editWageBonus').value = w.bonus || 0;
+
+  let personSelect = document.getElementById('editWagePerson');
+  if(!db.historyPersons) db.historyPersons = [];
+  personSelect.innerHTML = db.historyPersons.map(p => `<option ${p === w.person ? 'selected' : ''}>${esc(p)}</option>`).join('');
+  document.getElementById('wageEditModal').classList.add('show');
 }
 
-function updateWageField(id, key, val) {
+function saveEditedWage() {
+  let id = document.getElementById('editWageId').value;
   let w = db.wages.find(x => x.id == id);
   if (!w) return;
-  if (key === 'amount' || key === 'bonus') {
-    w[key] = parseFloat(val) || 0;
-  } else if (key === 'person') {
-    w.person = val.trim();
-    if (w.person && !db.historyPersons.includes(w.person)) {
-      db.historyPersons.push(w.person);
-    }
-  } else {
-    w[key] = val;
-  }
+
+  w.date = document.getElementById('editWageDate').value;
+  w.person = document.getElementById('editWagePerson').value;
+  w.amount = parseFloat(document.getElementById('editWageAmount').value) || 0;
+  w.bonus = parseFloat(document.getElementById('editWageBonus').value) || 0;
+
+  document.getElementById('wageEditModal').classList.remove('show');
   save();
+  alert('工資紀錄已成功更新！');
 }
 
 function renderPayments() {
