@@ -80,6 +80,9 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
 
+  /* 隱藏估價單下方的工程總金額、收訂金額與最下方的中華民國日期 */
+  .quote-summary-table { display: none !important; }
+
   .quote-paper input {
     border: none !important;
     background: transparent !important;
@@ -1276,7 +1279,6 @@ document.getElementById('projectForm').onsubmit = e => {
   let newStatus = pStatus.value;
   let targetProjectId;
   
-  // 防呆檢查：檢查是否有其他工程使用相同的名稱
   let duplicate = db.projects.find(p => p.name.trim() === newName && p.id != editId);
   if (duplicate) {
     alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程，客戶／工程名稱不可重複！請修改名稱後再試。`);
