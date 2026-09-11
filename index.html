@@ -311,7 +311,10 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div><label>工資金額</label><input id="wAmount" type="number" min="0" required></div>
           <div><label>日期</label><input id="wDate" type="date" required></div>
         </div>
-        <div class="actions"><button class="primary" id="btnWage">新增工資紀錄</button></div>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="addPerson()">＋ 自訂新增人員</button>
+          <button class="primary" id="btnWage">新增工資紀錄</button>
+        </div>
       </form>
     </div>
     <div class="section"><h2>工資紀錄列表</h2><div id="wageList"></div></div>
@@ -953,6 +956,16 @@ function addCategory() {
     if (!db.categories.includes(x.trim())) db.categories.push(x.trim());
     save();
     document.getElementById('eCategory').value = x.trim();
+  }
+}
+
+function addPerson() {
+  let x = prompt('請輸入新的師傅／人員姓名：');
+  if (x && x.trim()) {
+    if (!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
+    if (!db.historyPersons.includes(x.trim())) db.historyPersons.push(x.trim());
+    save();
+    document.getElementById('wPerson').value = x.trim();
   }
 }
 
