@@ -452,7 +452,7 @@ function importFromPastePrompt() {
   let note = '';
 
   for (let i = 0; i < lines.length; i++) {
-    let r = lines[i];
+    let r = lines[i].filter(c => c !== ''); // 過濾掉空白欄位
     let rowStr = r.join(' ');
 
     if (rowStr.includes('民國') || (rowStr.includes('年') && rowStr.includes('月'))) {
@@ -476,27 +476,28 @@ function importFromPastePrompt() {
       note = rowStr.trim();
     }
 
-    // 抓取項目列：只要第一欄是數字，或是第二欄有填工程項目名稱就視為品項
-    let firstCol = r[0] || '';
-    let itemName = r[1] || '';
-    if ((/^\d+$/.test(firstCol) && r.length >= 6) || (itemName && r.length >= 6 && !itemName.includes('工程估價單') && !itemName.includes('項目'))) {
-      let spec = r[2] || '';
-      let qty = parseFloat(String(r[3] || '').replace(/,/g, '')) || 0;
-      let unit = r[4] || '';
-      let price = parseFloat(String(r[5] || '').replace(/,/g, '')) || 0;
-      let itemTotal = qty * price;
+    // 智能判斷品項列：只要非表頭、且有包含數量與單價（通常長度大於等於5或6個有效欄位）
+    if (r.length >= 5 && !rowStr.includes('工程項目') && !rowStr.includes('中華民國') && !rowStr.includes('地點')) {
+      // 尋找可能的欄位：名稱、規格、數量、單位、單價、金額
+      // 如果第一欄是數字序號（例如 1, 2, 3），我們從第二欄開始抓
+      let startIndex = /^\d+$/.test(r[0]) ? 1 : 0;
+      
+      let itemName = r[startIndex] || '';
+      let spec = r[startIndex + 1] || '';
+      let qty = parseFloat(String(r[startIndex + 2] || '').replace(/,/g, ''));
+      let unit = r[startIndex + 3] || '';
+      let price = parseFloat(String(r[startIndex + 4] || '').replace(/,/g, ''));
 
-      if (!itemName && r.length >= 7) {
-        itemName = r[2] || '';
-        spec = r[3] || '';
-        qty = parseFloat(String(r[4] || '').replace(/,/g, '')) || 0;
-        unit = r[5] || '';
-        price = parseFloat(String(r[6] || '').replace(/,/g, '')) || 0;
-        itemTotal = qty * price;
-      }
-
-      if (itemName) {
-        items.push({ name: itemName, spec: spec, qty: qty, unit: unit, price: price, total: itemTotal });
+      // 如果抓出來的 qty 跟 price 都是數字，或者 itemName 有值
+      if (itemName && !isNaN(qty) && !isNaN(price)) {
+        items.push({
+          name: itemName,
+          spec: spec,
+          qty: qty,
+          unit: unit,
+          price: price,
+          total: qty * price
+        });
       }
     }
   }
@@ -514,7 +515,7 @@ function importFromPastePrompt() {
 
   renderQuote();
   document.getElementById('currentQuoteStatus').textContent = '📄 目前編輯：已成功透過貼上匯入';
-  alert('成功匯入估價單資料！請檢查內容後點擊「儲存估價單數據」。');
+  alert(`成功匯入 ${items.length} 筆估價單品項！請檢查內容後點擊「儲存估價單數據」。`);
 }
 
 function renderQuote() {
