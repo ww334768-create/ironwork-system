@@ -115,7 +115,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
 <main>
   <div id="syncStatus" class="sync-status no-print">
-    <span id="syncText">☁️ 雲端同步狀態：資料讀取中...</span>
+    <span id="syncText">☁️ 雲端同步狀態 : 資料讀取中...</span>
     <button class="secondary" style="padding:4px 8px;font-size:12px" onclick="loadCloudData()">🔄 手動整理同步</button>
   </div>
 
@@ -135,11 +135,11 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     </div>
 
     <div class="section">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px; padding-right:15px;">
-        <h2 style="margin:0;">📊 歷史累計與總結算</h2>
+      <div style="margin-bottom:12px;">
+        <h2 style="margin:0 0 8px 0;">📊 歷史累計與總結算</h2>
         <div style="display:flex; align-items:center; gap:8px;">
-          <label for="summaryYearSelect" style="margin:0; font-weight:bold;">選擇統計年度：</label>
-          <select id="summaryYearSelect" onchange="renderDashboard()" style="width:140px; padding:6px 8px; font-weight:bold; color:#173b63;"></select>
+          <label for="summaryYearSelect" style="margin:0; font-size:13px; color:#6b7280; font-weight:normal;">選擇統計年度：</label>
+          <select id="summaryYearSelect" onchange="renderDashboard()" style="width:160px; padding:6px 8px; font-weight:bold; color:#173b63;"></select>
         </div>
       </div>
       <div class="cards" id="totalCards"></div>
@@ -330,11 +330,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
       <form id="wageForm">
         <div class="grid">
           <div><label>選擇工程</label><select id="wProject" required></select></div>
-          <div>
-            <label>人員姓名</label>
-            <input id="wPerson" list="personHistoryList" placeholder="點擊選擇或直接輸入姓名" onclick="this.focus()" required>
-            <datalist id="personHistoryList"></datalist>
-          </div>
+          <div><label>人員姓名</label><select id="wPerson" required></select></div>
           <div><label>工資金額</label><input id="wAmount" type="number" min="0" required></div>
           <div><label>日期</label><input id="wDate" type="date" required></div>
         </div>
@@ -761,9 +757,15 @@ function renderSelects() {
     c.value = oldC || db.categories[0];
   }
 
-  const pList = document.getElementById('personHistoryList');
-  if (pList) {
-    pList.innerHTML = (db.historyPersons || []).map(x => `<option value="${esc(x)}">`).join('');
+  // 3. 針對「人員工資」的人員姓名選單
+  const pSelect = document.getElementById('wPerson');
+  if (pSelect) {
+    if(!db.historyPersons || db.historyPersons.length === 0) {
+      db.historyPersons = ['阿平', '阿強'];
+    }
+    const oldP = pSelect.value;
+    pSelect.innerHTML = db.historyPersons.map(x => `<option>${esc(x)}</option>`).join('');
+    pSelect.value = oldP || db.historyPersons[0];
   }
 }
 
@@ -969,13 +971,14 @@ function renderWages() {
     `;
 
     pWages.forEach(x => {
+      let optionsHtml = (db.historyPersons || ['阿平', '阿強']).map(person => `<option ${person === x.person ? 'selected' : ''}>${esc(person)}</option>`).join('');
       html += `
         <tr class="${groupId} sub-table-row" style="display:none;">
           <td colspan="4">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px; flex-wrap:wrap;">
               <div style="display:flex; gap:15px; align-items:center; flex-grow:1;">
                 <span style="width:150px;">📅 <input type="date" value="${x.date}" style="width:130px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
-                <span style="width:140px;">👤 <input list="personHistoryList" value="${esc(x.person)}" style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()"></span>
+                <span style="width:150px;">👤 <select style="width:120px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()">${optionsHtml}</select></span>
                 <span style="width:130px;">💰 <input type="number" value="${x.amount}" style="width:100px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()"></span>
               </div>
               <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
