@@ -139,7 +139,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         <h2 style="margin:0 0 8px 0;">📊 歷史累計與總結算</h2>
         <div style="display:flex; align-items:center; gap:8px;">
           <label for="summaryYearSelect" style="margin:0; font-size:13px; color:#6b7280; font-weight:normal;">選擇統計年度：</label>
-          <select id="summaryYearSelect" onchange="renderDashboard()" style="width:160px; padding:6px 8px; font-weight:bold; color:#173b63;"></select>
+          <select id="summaryYearSelect" onchange="renderDashboard()" style="width:200px; padding:6px 8px; font-weight:bold; color:#173b63;"></select>
         </div>
       </div>
       <div class="cards" id="totalCards"></div>
@@ -374,9 +374,17 @@ let currentQuoteId = null;
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [], expenses: [], wages: [], payments: [], quotesList: [],
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他'],
-  historyItems: [], historySpecs: [], historyPersons: ['阿平', '阿強'],
+  historyItems: [], historySpecs: [], historyPersons: [],
   activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 }
 };
+
+// 確保阿平阿強若存在舊資料中被移除
+if (db.historyPersons) {
+  db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
+}
+if (!db.historyPersons) {
+  db.historyPersons = [];
+}
 
 function sortByDateDesc(arr) {
   return [...arr].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
@@ -396,7 +404,8 @@ async function loadCloudData() {
             db = parsed;
             if(!db.quotesList) db.quotesList = [];
             if(!db.wages) db.wages = [];
-            if(!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
+            if(!db.historyPersons) db.historyPersons = [];
+            db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
             localStorage.setItem(KEY, JSON.stringify(db));
             statusEl.textContent = '✅ 雲端同步完成！';
             render(); renderQuote(); renderQuoteHistory();
@@ -760,12 +769,10 @@ function renderSelects() {
   // 3. 針對「人員工資」的人員姓名選單
   const pSelect = document.getElementById('wPerson');
   if (pSelect) {
-    if(!db.historyPersons || db.historyPersons.length === 0) {
-      db.historyPersons = ['阿平', '阿強'];
-    }
+    if(!db.historyPersons) db.historyPersons = [];
     const oldP = pSelect.value;
     pSelect.innerHTML = db.historyPersons.map(x => `<option>${esc(x)}</option>`).join('');
-    pSelect.value = oldP || db.historyPersons[0];
+    pSelect.value = oldP || (db.historyPersons[0] || '');
   }
 }
 
@@ -971,7 +978,7 @@ function renderWages() {
     `;
 
     pWages.forEach(x => {
-      let optionsHtml = (db.historyPersons || ['阿平', '阿強']).map(person => `<option ${person === x.person ? 'selected' : ''}>${esc(person)}</option>`).join('');
+      let optionsHtml = (db.historyPersons || []).map(person => `<option ${person === x.person ? 'selected' : ''}>${esc(person)}</option>`).join('');
       html += `
         <tr class="${groupId} sub-table-row" style="display:none;">
           <td colspan="4">
@@ -1036,7 +1043,7 @@ function addCategory() {
 function addPerson() {
   let x = prompt('請輸入新的師傅／人員姓名：');
   if (x && x.trim()) {
-    if (!db.historyPersons) db.historyPersons = ['阿平', '阿強'];
+    if (!db.historyPersons) db.historyPersons = [];
     if (!db.historyPersons.includes(x.trim())) db.historyPersons.push(x.trim());
     save();
     document.getElementById('wPerson').value = x.trim();
