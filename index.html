@@ -80,7 +80,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
 
-  /* 隱藏金額數字與日期數字，但表格框線與文字保留 */
+  /* 隱藏金額數字與日期數字 */
   #qTotalStr, #qDepositStr, #qYear, #qMonth, #qDay {
     color: transparent !important;
   }
@@ -91,7 +91,10 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     box-shadow: none !important;
     padding: 0 !important;
   }
-  .quote-paper input:placeholder-shown {
+
+  /* 自動隱藏所有未填寫時的灰色提示文字 (placeholder) */
+  .quote-paper input::placeholder,
+  .quote-paper textarea::placeholder {
     color: transparent !important;
   }
 }
@@ -1362,7 +1365,7 @@ document.getElementById('paymentForm').onsubmit = e => {
   alert('收款紀錄新增成功！');
 };
 
-document.getElementById('pDate').value = today;
+document.getElementById('pDate').value>today;
 
 render(); renderQuote(); renderQuoteHistory(); loadCloudData();
 </script>
