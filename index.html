@@ -550,7 +550,7 @@ function processPastedData() {
       }
     }
 
-    if (rowStr.includes('地址') || rowStr.includes('地點') || rowStr.includes('園街') || rowStr.includes('路') || rowStr.includes('街') || rowStr.includes('市') || rowStr.includes('區')) {
+    if (rowStr.includes('地址') || rowStr.includes('地點') || rowStr.includes('園街') || rowStr.includes('路') || rowStr.includes('街') || rowStr.includes('市') || rowStr.includes('区')) {
       let addrCell = r.find(cell => cell.includes('園街') || cell.includes('路') || cell.includes('市') || cell.includes('區') || cell.includes('巷') || cell.includes('街') || cell.includes('段'));
       if (addrCell) {
         address = addrCell.replace(/地點[：:]?|地址[：:]?/g, '').trim();
@@ -869,6 +869,15 @@ function renderSelects() {
     const oldP = pSelect.value;
     pSelect.innerHTML = db.historyPersons.map(x => `<option>${esc(x)}</option>`).join('');
     pSelect.value = oldP || (db.historyPersons[0] || '');
+  }
+}
+
+function updateSubFormDates(projectId) {
+  let p = db.projects.find(x => x.id == projectId);
+  if (p && p.date) {
+    document.getElementById('eDate').value = p.date;
+    document.getElementById('wDate').value = p.date;
+    document.getElementById('payDate').value = p.date;
   }
 }
 
@@ -1253,6 +1262,10 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.getElementById(b.dataset.page).classList.add('active');
 });
 
+document.getElementById('eProject').onchange = (e) => { updateSubFormDates(e.target.value); };
+document.getElementById('wProject').onchange = (e) => { updateSubFormDates(e.target.value); };
+document.getElementById('payProject').onchange = (e) => { updateSubFormDates(e.target.value); };
+
 document.getElementById('projectForm').onsubmit = e => {
   e.preventDefault();
   let editId = document.getElementById('editingProjectId').value;
@@ -1286,7 +1299,7 @@ document.getElementById('projectForm').onsubmit = e => {
 document.getElementById('expenseForm').onsubmit = e => {
   e.preventDefault();
   db.expenses.push({ id: uid(), projectId: +eProject.value, category: eCategory.value, amount: +eAmount.value, date: eDate.value, note: eNote.value });
-  e.target.reset(); eDate.value = today; save();
+  e.target.reset(); save();
 };
 
 document.getElementById('wageForm').onsubmit = e => {
@@ -1301,7 +1314,7 @@ document.getElementById('wageForm').onsubmit = e => {
     date: wDate.value 
   });
   if (personName && !db.historyPersons.includes(personName)) db.historyPersons.push(personName);
-  e.target.reset(); wDate.value = today; wBonus.value = 0; save();
+  e.target.reset(); wBonus.value = 0; save();
 };
 
 document.getElementById('paymentForm').onsubmit = e => {
@@ -1331,11 +1344,11 @@ document.getElementById('paymentForm').onsubmit = e => {
     p.status = '已收款完成';
   }
 
-  e.target.reset(); payDate.value = today; payDiscount.value = 0; save();
+  e.target.reset(); payDiscount.value = 0; save();
   alert('收款紀錄新增成功！');
 };
 
-[pDate, eDate, wDate, payDate].forEach(x => x.value = today);
+document.getElementById('pDate').value = today;
 
 render(); renderQuote(); renderQuoteHistory(); loadCloudData();
 </script>
