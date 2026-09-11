@@ -75,13 +75,26 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-summary-table td{border:1px solid #333;padding:6px;font-size:13px;white-space:normal}
 
 @media print {
-  @page { size: A4 portrait; margin: 8mm; }
+  @page { size: A4 portrait; margin: 0; }
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
   body { background: white; -webkit-print-color-adjust: exact; }
-  .quote-paper { box-shadow: none; padding: 0; margin: 0; max-width: 100%; page-break-inside: avoid; }
+  .quote-paper { box-shadow: none; padding: 15px; margin: 0; max-width: 100%; page-break-inside: avoid; }
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
+
+  /* 列印時移除所有輸入框的邊框與背景，呈現純文字質感 */
+  .quote-paper input {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  
+  /* 若輸入框內容為空或等於預設placeholder，列印時不顯示 */
+  .quote-paper input:placeholder-shown {
+    color: transparent !important;
+  }
 }
 </style>
 </head>
