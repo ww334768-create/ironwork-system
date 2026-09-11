@@ -443,6 +443,28 @@ async function save() {
   }
 }
 
+async function saveSilent() {
+  localStorage.setItem(KEY, JSON.stringify(db));
+  try {
+    await fetch(API_URL, { 
+      method: "POST", 
+      body: JSON.stringify({ 
+        content: JSON.stringify({
+          projects: db.projects,
+          expenses: db.expenses,
+          wages: db.wages,
+          payments: db.payments,
+          quotesList: db.quotesList,
+          categories: db.categories,
+          historyItems: db.historyItems,
+          historySpecs: db.historySpecs,
+          historyPersons: db.historyPersons
+        }) 
+      }) 
+    });
+  } catch (err) {}
+}
+
 function importFromPastePrompt() {
   let rawData = prompt('請直接前往您的 Google 試算表，把估價單表格內容複製起來，然後貼到下方欄位中：');
   if (!rawData || !rawData.trim()) return;
@@ -949,9 +971,10 @@ function renderWages() {
     let pWages = sortByDateDesc(db.wages.filter(w => w.projectId == p.id));
     let pTotal = sum(pWages);
     let groupId = 'wage_group_' + p.id;
+    let isOpen = document.getElementById('header_' + groupId)?.classList.contains('group-open') || false;
 
     html += `
-      <tr class="group-header-row" id="header_${groupId}" onclick="toggleGroup('${groupId}')">
+      <tr class="group-header-row ${isOpen ? 'group-open' : ''}" id="header_${groupId}" onclick="toggleGroup('${groupId}')">
         <td><span class="toggle-icon">▶</span> <b>${esc(p.name)}</b></td>
         <td>${pWages.length} 筆</td>
         <td><b style="color:#e87522">${money(pTotal)}</b></td>
@@ -963,15 +986,15 @@ function renderWages() {
       let optionsHtml = (db.historyPersons || []).map(person => `<option ${person === x.person ? 'selected' : ''}>${esc(person)}</option>`).join('');
       let subTotal = Number(x.amount || 0) + Number(x.bonus || 0);
       html += `
-        <tr class="${groupId} sub-table-row" style="display:none;">
+        <tr class="${groupId} sub-table-row" style="display:${isOpen ? 'table-row' : 'none'};">
           <td colspan="4">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; padding-left:10px; flex-wrap:wrap;">
               <div style="display:flex; gap:10px; align-items:center; flex-grow:1; flex-wrap:wrap;">
                 <span style="width:140px;">📅 <input type="date" value="${x.date}" style="width:120px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
                 <span style="width:130px;">👤 <select style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()">${optionsHtml}</select></span>
-                <span style="width:110px;">💰 <input type="number" value="${x.amount}" placeholder="工資" style="width:90px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()" title="工資"></span>
-                <span style="width:110px;">🎁 <input type="number" value="${x.bonus || 0}" placeholder="獎金" style="width:90px; display:inline-block;" onchange="updateWageField(${x.id}, 'bonus', this.value)" onclick="event.stopPropagation()" title="獎金"></span>
-                <span style="font-size:12px; color:#6b7280;">(小計: <b style="color:#e87522">${money(subTotal)}</b>)</span>
+                <span style="width:110px;">💰 <input type="number" value="${x.amount}" placeholder="工資" style="width:90px; display:inline-block;" oninput="updateWageValueOnly(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()" title="工資"></span>
+                <span style="width:110px;">🎁 <input type="number" value="${x.bonus || 0}" placeholder="獎金" style="width:90px; display:inline-block;" oninput="updateWageValueOnly(${x.id}, 'bonus', this.value)" onclick="event.stopPropagation()" title="獎金"></span>
+                <span style="font-size:12px; color:#6b7280;" id="wage_subtotal_${x.id}">(小計: <b style="color:#e87522">${money(subTotal)}</b>)</span>
               </div>
               <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
             </div>
@@ -983,6 +1006,18 @@ function renderWages() {
 
   html += `</table></div>`;
   container.innerHTML = html;
+}
+
+function updateWageValueOnly(id, key, val) {
+  let w = db.wages.find(x => x.id == id);
+  if (!w) return;
+  w[key] = parseFloat(val) || 0;
+  let subTotal = Number(w.amount || 0) + Number(w.bonus || 0);
+  let subEl = document.getElementById(`wage_subtotal_${id}`);
+  if (subEl) {
+    subEl.innerHTML = `(小計: <b style="color:#e87522">${money(subTotal)}</b>)`;
+  }
+  saveSilent();
 }
 
 function updateWageField(id, key, val) {
