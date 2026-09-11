@@ -39,6 +39,13 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .small{font-size:12px;color:#6b7280}
 .sync-status{background:#e0f2fe;color:#0369a1;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;justify-content:space-between;}
 
+/* 折疊群組樣式 */
+.group-header-row { background:#f9fafb; cursor:pointer; font-weight:bold; }
+.group-header-row:hover { background:#f3f4f6; }
+.sub-table-row td { background:#fdfdfd; padding-left:24px; border-bottom:1px dashed #e5e7eb; }
+.toggle-icon { display:inline-block; width:20px; transition:transform 0.2s; }
+.group-open .toggle-icon { transform:rotate(90deg); }
+
 /* 估價單專用樣式 */
 .quote-paper{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);max-width:850px;margin:auto}
 .quote-header{text-align:center;border-bottom:2px solid #173b63;padding-bottom:8px;margin-bottom:12px}
@@ -680,6 +687,11 @@ function renderSelects() {
   const c = document.getElementById('eCategory'); const old = c.value;
   c.innerHTML = db.categories.map(x => `<option>${esc(x)}</option>`).join('');
   c.value = old || db.categories[0];
+
+  const pList = document.getElementById('personHistoryList');
+  if (pList) {
+    pList.innerHTML = (db.historyPersons || []).map(x => `<option value="${esc(x)}">`).join('');
+  }
 }
 
 function renderDashboard() {
@@ -741,16 +753,119 @@ function resetProjectForm() {
   document.getElementById('cancelEditProject').style.display = 'none';
 }
 
+function toggleGroup(id) {
+  let el = document.getElementById(id);
+  if (el) {
+    el.classList.toggle('group-open');
+    let rows = document.querySelectorAll('.' + id);
+    rows.forEach(r => r.style.display = r.style.display === 'none' ? 'table-row' : 'none');
+  }
+}
+
 function renderExpenses() {
-  let sorted = sortByDateDesc(db.expenses);
-  document.getElementById('expenseList').innerHTML = sorted.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>項目</th><th>金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><span class="pill">${esc(x.category)}</span></td><td>${money(x.amount)}</td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('expenses',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無支出紀錄</div>';
+  let container = document.getElementById('expenseList');
+  let projectsWithExpenses = db.projects.filter(p => db.expenses.some(e => e.projectId == p.id));
+  
+  if (projectsWithExpenses.length === 0) {
+    container.innerHTML = '<div class="empty">尚無支出紀錄</div>';
+    return;
+  }
+
+  let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>支出筆數</th><th>總金額</th><th>操作</th></tr>`;
+  
+  projectsWithExpenses.forEach(p => {
+    let pExpenses = db.expenses.filter(e => e.projectId == p.id);
+    let pTotal = sum(pExpenses);
+    let groupId = 'exp_group_' + p.id;
+
+    html += `
+      <tr class="group-header-row" onclick="toggleGroup('${groupId}')" id="header_${groupId}">
+        <td><span class="toggle-icon">▶</span> <b>${esc(p.name)}</b></td>
+        <td>${pExpenses.length} 筆</td>
+        <td><b style="color:#e87522">${money(pTotal)}</b></td>
+        <td>點擊展開明細</td>
+      </tr>
+    `;
+
+    pExpenses.forEach(x => {
+      html += `
+        <tr class="${groupId} sub-table-row" style="display:none;">
+          <td colspan="4">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px;">
+              <span>📅 ${x.date} ｜ 項目：<b>${esc(x.category)}</b> ｜ 金額：<b>${money(x.amount)}</b> ｜ 備註：${esc(x.note || '-')}</span>
+              <button class="danger" onclick="del('expenses', ${x.id}); event.stopPropagation();">刪除</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+  });
+
+  html += `</table></div>`;
+  container.innerHTML = html;
 }
 
 function renderWages() {
-  let sorted = sortByDateDesc(db.wages);
-  document.getElementById('wageList').innerHTML = sorted.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>人員</th><th>工資金額</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${esc(x.person)}</b></td><td>${money(x.amount)}</td><td><button class="danger" onclick="del('wages',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無工資紀錄</div>';
+  let container = document.getElementById('wageList');
+  let projectsWithWages = db.projects.filter(p => db.wages.some(w => w.projectId == p.id));
+  
+  if (projectsWithWages.length === 0) {
+    container.innerHTML = '<div class="empty">尚無工資紀錄</div>';
+    return;
+  }
+
+  let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工資筆數</th><th>總金額</th><th>操作</th></tr>`;
+  
+  projectsWithWages.forEach(p => {
+    let pWages = db.wages.filter(w => w.projectId == p.id);
+    let pTotal = sum(pWages);
+    let groupId = 'wage_group_' + p.id;
+
+    html += `
+      <tr class="group-header-row" onclick="toggleGroup('${groupId}')" id="header_${groupId}">
+        <td><span class="toggle-icon">▶</span> <b>${esc(p.name)}</b></td>
+        <td>${pWages.length} 筆</td>
+        <td><b style="color:#e87522">${money(pTotal)}</b></td>
+        <td>點擊展開明細</td>
+      </tr>
+    `;
+
+    pWages.forEach(x => {
+      html += `
+        <tr class="${groupId} sub-table-row" style="display:none;">
+          <td colspan="4">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; flex-wrap:wrap;">
+              <div style="display:flex; gap:10px; align-items:center; flex-grow:1;">
+                <span>📅 <input type="date" value="${x.date}" style="width:130px; display:inline-block;" onchange="updateWageField(${x.id}, 'date', this.value)"></span>
+                <span>👤 <input list="personHistoryList" value="${esc(x.person)}" style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)"></span>
+                <span>💰 <input type="number" value="${x.amount}" style="width:100px; display:inline-block;" onchange="updateWageField(${x.id}, 'amount', this.value)"></span>
+              </div>
+              <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+  });
+
+  html += `</table></div>`;
+  container.innerHTML = html;
+}
+
+function updateWageField(id, key, val) {
+  let w = db.wages.find(x => x.id == id);
+  if (!w) return;
+  if (key === 'amount') {
+    w.amount = parseFloat(val) || 0;
+  } else if (key === 'person') {
+    w.person = val.trim();
+    if (w.person && !db.historyPersons.includes(w.person)) {
+      db.historyPersons.push(w.person);
+    }
+  } else {
+    w[key] = val;
+  }
+  save();
 }
 
 function renderPayments() {
