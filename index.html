@@ -370,6 +370,36 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   </div>
 </div>
 
+<!-- 支出編輯互動視窗 -->
+<div class="modal" id="expenseEditModal">
+  <div class="modalbox" style="max-width:450px;">
+    <h2>✏️ 編輯支出紀錄</h2>
+    <input type="hidden" id="editExpenseId">
+    <div style="display:flex; flex-direction:column; gap:12px; margin-top:15px;">
+      <div>
+        <label>日期</label>
+        <input type="date" id="editExpenseDate">
+      </div>
+      <div>
+        <label>支出項目</label>
+        <select id="editExpenseCategory"></select>
+      </div>
+      <div>
+        <label>金額</label>
+        <input type="number" id="editExpenseAmount" min="0">
+      </div>
+      <div>
+        <label>備註</label>
+        <input type="text" id="editExpenseNote" placeholder="例如：廠商名稱或材料規格">
+      </div>
+    </div>
+    <div class="actions" style="justify-content:flex-end; margin-top:20px;">
+      <button class="secondary" onclick="document.getElementById('expenseEditModal').classList.remove('show')">取消</button>
+      <button class="primary" onclick="saveEditedExpense()">💾 儲存修改</button>
+    </div>
+  </div>
+</div>
+
 <!-- 工資編輯互動視窗 -->
 <div class="modal" id="wageEditModal">
   <div class="modalbox" style="max-width:450px;">
@@ -1006,12 +1036,15 @@ function renderExpenses() {
       html += `
         <tr class="${groupId} sub-table-row" style="display:${isOpen ? 'table-row' : 'none'};">
           <td colspan="4">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px; white-space:nowrap;">
               <span style="width:120px; flex-shrink:0;">📅 ${x.date}</span>
               <span style="width:120px; flex-shrink:0;">項目：<b>${esc(x.category)}</b></span>
               <span style="width:130px; flex-shrink:0;">金額：<b style="color:#e87522;">${money(x.amount)}</b></span>
-              <span style="flex-grow:1; color:#4b5563;">備註：${esc(x.note || '-')}</span>
-              <button class="danger" style="flex-shrink:0;" onclick="del('expenses', ${x.id}); event.stopPropagation();">刪除</button>
+              <span style="flex-grow:1; color:#4b5563; overflow:hidden; text-overflow:ellipsis;">備註：${esc(x.note || '-')}</span>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="secondary" style="padding:7px 10px; font-size:13px;" onclick="openEditExpenseModal(${x.id}); event.stopPropagation();">編輯</button>
+                <button class="danger" onclick="del('expenses', ${x.id}); event.stopPropagation();">刪除</button>
+              </div>
             </div>
           </td>
         </tr>
@@ -1021,6 +1054,34 @@ function renderExpenses() {
 
   html += `</table></div>`;
   container.innerHTML = html;
+}
+
+function openEditExpenseModal(id) {
+  let e = db.expenses.find(x => x.id == id);
+  if (!e) return;
+  document.getElementById('editExpenseId').value = e.id;
+  document.getElementById('editExpenseDate').value = e.date || today;
+  document.getElementById('editExpenseAmount').value = e.amount || 0;
+  document.getElementById('editExpenseNote').value = e.note || '';
+
+  let catSelect = document.getElementById('editExpenseCategory');
+  catSelect.innerHTML = db.categories.map(c => `<option ${c === e.category ? 'selected' : ''}>${esc(c)}</option>`).join('');
+  document.getElementById('expenseEditModal').classList.add('show');
+}
+
+function saveEditedExpense() {
+  let id = document.getElementById('editExpenseId').value;
+  let e = db.expenses.find(x => x.id == id);
+  if (!e) return;
+
+  e.date = document.getElementById('editExpenseDate').value;
+  e.category = document.getElementById('editExpenseCategory').value;
+  e.amount = parseFloat(document.getElementById('editExpenseAmount').value) || 0;
+  e.note = document.getElementById('editExpenseNote').value;
+
+  document.getElementById('expenseEditModal').classList.remove('show');
+  save();
+  alert('支出紀錄已成功更新！');
 }
 
 function renderWages() {
@@ -1060,7 +1121,7 @@ function renderWages() {
       html += `
         <tr class="${groupId} sub-table-row" style="display:${isOpen ? 'table-row' : 'none'};">
           <td colspan="4">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px; white-space:nowrap;">
               <span style="width:120px; flex-shrink:0;">📅 ${x.date}</span>
               <span style="width:120px; flex-shrink:0;">人員：<b>${esc(x.person)}</b></span>
               <span style="width:110px; flex-shrink:0;">工資：<b style="color:#173b63;">${money(x.amount)}</b></span>
