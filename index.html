@@ -705,29 +705,26 @@ function render() {
 function renderSelects() {
   let sortedProjects = sortByDateDesc(db.projects);
   
-  // 1. 一般工程選單（工資、收款維持全部顯示）
-  ['wProject', 'payProject'].forEach(id => {
+  // 1. 針對「工程支出」與「人員工資」選擇工程選單（自動過濾：狀態為「已收款完成」的工程不顯示）
+  ['eProject', 'wProject'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
     const old = el.value;
-    el.innerHTML = '<option value="">-- 請選擇工程 --</option>' + sortedProjects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
+    let filteredProjects = sortedProjects.filter(p => p.status !== '已收款完成');
+    el.innerHTML = '<option value="">-- 請選擇工程 --</option>' + filteredProjects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
     el.value = old;
   });
 
-  // 2. 「工程支出」選擇工程選單（自動過濾：已新增支出 且 已收款完成 的工程不顯示）
-  const eEl = document.getElementById('eProject');
-  if (eEl) {
-    const oldE = eEl.value;
-    let filteredProjects = sortedProjects.filter(p => {
-      let hasExpense = db.expenses.some(e => e.projectId == p.id);
-      let isPaidComplete = (p.status === '已收款完成');
-      if (hasExpense && isPaidComplete) {
-        return false;
-      }
-      return true;
+  // 2. 針對「客戶收款」選擇工程選單（自動過濾：未收款為 0 或狀態為「已收款完成」的工程不顯示）
+  const payEl = document.getElementById('payProject');
+  if (payEl) {
+    const oldPay = payEl.value;
+    let filteredPayProjects = sortedProjects.filter(p => {
+      let t = totals(p);
+      return t.remain > 0 && p.status !== '已收款完成';
     });
-    eEl.innerHTML = '<option value="">-- 請選擇工程 --</option>' + filteredProjects.map(p => `<option value="${p.id}">${esc(p.name)} (${money(p.amount)})</option>`).join('');
-    eEl.value = oldE;
+    payEl.innerHTML = '<option value="">-- 請選擇工程 --</option>' + filteredPayProjects.map(p => `<option value="${p.id}">${esc(p.name)} (未收: ${money(totals(p).remain)})</option>`).join('');
+    payEl.value = oldPay;
   }
 
   const c = document.getElementById('eCategory'); 
