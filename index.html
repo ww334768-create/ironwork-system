@@ -104,7 +104,17 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         <input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
       </div>
     </div>
-    <div class="cards" id="cards"></div>
+    
+    <div class="section" style="margin-top:0">
+      <h2>📅 本月即時結算 (<span id="currentMonthLabel"></span>)</h2>
+      <div class="cards" id="monthCards"></div>
+    </div>
+
+    <div class="section">
+      <h2>📊 歷史累計與總結算（所有歷年工程總計）</h2>
+      <div class="cards" id="totalCards"></div>
+    </div>
+
     <div class="section"><h2>進行中工程概況</h2><div id="dashProjects"></div></div>
     <div class="section"><h2>未收款工程</h2><div id="dashReceivables"></div></div>
   </section>
@@ -721,20 +731,38 @@ function renderSelects() {
 
 function renderDashboard() {
   const dayCount = db.projects.filter(p => p.date === today).length;
-  const mPrefix = today.slice(0, 7);
+  const mPrefix = today.slice(0, 7); // 例如 "2026-09"
+  document.getElementById('currentMonthLabel').textContent = mPrefix;
+
+  // 本月即時結算數據
   const mExp = sum(db.expenses.filter(x => x.date && x.date.startsWith(mPrefix)));
   const mW = sum(db.wages.filter(x => x.date && x.date.startsWith(mPrefix)));
   const mPay = sum(db.payments.filter(x => x.date && x.date.startsWith(mPrefix)));
 
-  document.getElementById('cards').innerHTML = [
-    ['今日工程案量', dayCount + ' 筆'],
+  document.getElementById('monthCards').innerHTML = [
+    ['本月新增工程數', db.projects.filter(p => p.date && p.date.startsWith(mPrefix)).length + ' 筆'],
     ['本月已收款', money(mPay)],
     ['本月支出', money(mExp)],
     ['本月工資', money(mW)],
-    ['本月淨利', money(mPay - mExp - mW)],
-    ['進行中工程', db.projects.filter(p => p.status === '進行中').length + ' 筆'],
-    ['總未收款', money(db.projects.reduce((s, p) => s + totals(p).remain, 0))]
+    ['本月淨利 (收款-支出-工資)', money(mPay - mExp - mW)]
   ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num">${x[1]}</div></div>`).join('');
+
+  // 歷史累計與總結算數據（不限月份，全部總和）
+  const totalProjectsAmount = db.projects.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const totalExp = sum(db.expenses);
+  const totalWages = sum(db.wages);
+  const totalPaid = sum(db.payments);
+  const totalRemain = db.projects.reduce((s, p) => s + totals(p).remain, 0);
+  const totalNetProfit = totalPaid - totalExp - totalWages;
+
+  document.getElementById('totalCards').innerHTML = [
+    ['累計工程總金額', money(totalProjectsAmount)],
+    ['歷史總已收款', money(totalPaid)],
+    ['歷史總支出', money(totalExp)],
+    ['歷史總工資', money(totalWages)],
+    ['總未收款餘額', money(totalRemain)],
+    ['全體歷年累計淨利', money(totalNetProfit)]
+  ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num" style="color:${x[0].includes('未收款') ? '#d97706' : '#173b63'}">${x[1]}</div></div>`).join('');
 
   const active = sortByDateDesc(db.projects.filter(p => p.status === '進行中'));
   document.getElementById('dashProjects').innerHTML = active.length ? 
