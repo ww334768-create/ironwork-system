@@ -148,7 +148,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     <div class="no-print" style="max-width:850px;margin:0 auto 15px auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <span id="currentQuoteStatus" style="font-weight:bold;color:#173b63">📄 目前編輯：新估價單</span>
       <div style="display:flex;gap:8px;">
-        <button class="secondary" style="background:#059669" onclick="importFromPastePrompt()">📋 貼上 Google 試算表內容匯入</button>
+        <button class="secondary" style="background:#059669" onclick="openImportModal()">📋 貼上 Google 試算表內容匯入</button>
         <button class="secondary" onclick="resetNewQuote()">＋ 開立新估價單</button>
       </div>
     </div>
@@ -357,6 +357,19 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   </section>
 </main>
 
+<!-- 貼上匯入專用互動視窗 -->
+<div class="modal" id="importModal">
+  <div class="modalbox" style="max-width:750px;">
+    <h2>📋 貼上 Google 試算表內容匯入</h2>
+    <p class="small" style="color:#4b5563; margin-bottom:10px;">請在下方方塊中直接按下 Ctrl + V 貼上您從 Google 試算表複製的估價單範圍：</p>
+    <textarea id="pasteTextArea" rows="8" placeholder="在此處點擊並貼上 (Ctrl+V)..." style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; margin-bottom:15px; font-family:monospace;"></textarea>
+    <div class="actions" style="justify-content:flex-end;">
+      <button class="secondary" onclick="document.getElementById('importModal').classList.remove('show')">取消</button>
+      <button class="primary" onclick="processPastedData()">🚀 確認並帶入估價單</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="detailModal"><div class="modalbox" id="detailBox"></div></div>
 
 <script>
@@ -465,9 +478,19 @@ async function saveSilent() {
   } catch (err) {}
 }
 
-function importFromPastePrompt() {
-  let rawData = prompt('請直接前往您的 Google 試算表，把估價單表格內容複製起來，然後貼到下方欄位中：');
-  if (!rawData || !rawData.trim()) return;
+function openImportModal() {
+  document.getElementById('pasteTextArea').value = '';
+  document.getElementById('importModal').classList.add('show');
+  setTimeout(() => document.getElementById('pasteTextArea').focus(), 100);
+}
+
+function processPastedData() {
+  let rawData = document.getElementById('pasteTextArea').value;
+  if (!rawData || !rawData.trim()) {
+    alert('請先在方塊中貼上試算表內容！');
+    return;
+  }
+  document.getElementById('importModal').classList.remove('show');
 
   let lines = rawData.split('\n').map(l => l.split('\t').map(c => c.trim()));
   let parsedDate = today;
@@ -500,24 +523,46 @@ function importFromPastePrompt() {
       note = rowStr.trim();
     }
 
-    if (r.length >= 5 && !rowStr.includes('工程項目') && !rowStr.includes('中華民國') && !rowStr.includes('地點')) {
-      let startIndex = /^\d+$/.test(r[0]) ? 1 : 0;
-      
-      let itemName = r[startIndex] || '';
-      let spec = r[startIndex + 1] || '';
-      let qty = parseFloat(String(r[startIndex + 2] || '').replace(/,/g, ''));
-      let unit = r[startIndex + 3] || '';
-      let price = parseFloat(String(r[startIndex + 4] || '').replace(/,/g, ''));
+    if (r.length >= 4 && !rowStr.includes('工程項目') && !rowStr.includes('中華民國') && !rowStr.includes('地點')) {
+      let textCols = r.filter(c => isNaN(c) || c === '');
+      let numCols = r.filter(c => !isNaN(c) && c !== '');
 
-      if (itemName && !isNaN(qty) && !isNaN(price)) {
-        items.push({
-          name: itemName,
-          spec: spec,
-          qty: qty,
-          unit: unit,
-          price: price,
-          total: qty * price
-        });
+      if (textCols.length > 0 && numCols.length >= 2) {
+        let validCols = r.filter(c => c !== '' && !(/^(\d+)$/.test(c) && parseInt(c) < 100 && r.indexOf(c) === 0));
+        if (validCols.length >= 5) {
+          let itemName = validCols[0] || '';
+          let spec = validCols[1] || '';
+          let qty = parseFloat(String(validCols[2] || '').replace(/,/g, '')) || 0;
+          let unit = validCols[3] || '';
+          let price = parseFloat(String(validCols[4] || '').replace(/,/g, '')) || 0;
+
+          if (itemName && price > 0) {
+            items.push({
+              name: itemName,
+              spec: spec,
+              qty: qty,
+              unit: unit,
+              price: price,
+              total: qty * price
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (items.length === 0) {
+    for (let i = 0; i < lines.length; i++) {
+      let r = lines[i].filter(c => c !== '');
+      if (r.length >= 5) {
+        let name = r[1] || r[0] || '';
+        let spec = r[2] || '';
+        let qty = parseFloat(String(r[3] || '').replace(/,/g, '')) || 1;
+        let unit = r[4] || '';
+        let price = parseFloat(String(r[5] || r[4] || '').replace(/,/g, '')) || 0;
+        if (name && price > 0 && !name.includes('工程項目')) {
+          items.push({ name: name, spec: spec, qty: qty, unit: unit, price: price, total: qty * price });
+        }
       }
     }
   }
@@ -938,9 +983,10 @@ function renderExpenses() {
     let pExpenses = sortByDateDesc(db.expenses.filter(e => e.projectId == p.id));
     let pTotal = sum(pExpenses);
     let groupId = 'exp_group_' + p.id;
+    let isOpen = document.getElementById('header_' + groupId)?.classList.contains('group-open') || false;
 
     html += `
-      <tr class="group-header-row" id="header_${groupId}" onclick="toggleGroup('${groupId}')">
+      <tr class="group-header-row ${isOpen ? 'group-open' : ''}" id="header_${groupId}" onclick="toggleGroup('${groupId}')">
         <td><span class="toggle-icon">▶</span> <b>${esc(p.name)}</b></td>
         <td>${pExpenses.length} 筆</td>
         <td><b style="color:#e87522">${money(pTotal)}</b></td>
@@ -950,7 +996,7 @@ function renderExpenses() {
 
     pExpenses.forEach(x => {
       html += `
-        <tr class="${groupId} sub-table-row" style="display:none;">
+        <tr class="${groupId} sub-table-row" style="display:${isOpen ? 'table-row' : 'none'};">
           <td colspan="4">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px;">
               <span style="width:120px; flex-shrink:0;">📅 ${x.date}</span>
@@ -1007,15 +1053,13 @@ function renderWages() {
       html += `
         <tr class="${groupId} sub-table-row" style="display:${isOpen ? 'table-row' : 'none'};">
           <td colspan="4">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; padding-left:10px; flex-wrap:wrap;">
-              <div style="display:flex; gap:10px; align-items:center; flex-grow:1; flex-wrap:wrap;">
-                <span style="width:145px;">📅 <input type="date" value="${x.date}" style="width:115px; display:inline-block; border:1px solid #d1d5db; border-radius:6px; padding:4px; background:white;" onchange="updateWageField(${x.id}, 'date', this.value)" onclick="event.stopPropagation()"></span>
-                <span style="width:130px;">👤 <select style="width:110px; display:inline-block;" onchange="updateWageField(${x.id}, 'person', this.value)" onclick="event.stopPropagation()">${optionsHtml}</select></span>
-                <span style="width:110px;">💰 <input type="number" value="${x.amount}" placeholder="工資" style="width:90px; display:inline-block;" oninput="updateWageValueOnly(${x.id}, 'amount', this.value)" onclick="event.stopPropagation()" title="工資"></span>
-                <span style="width:110px;">🎁 <input type="number" value="${x.bonus || 0}" placeholder="獎金" style="width:90px; display:inline-block;" oninput="updateWageValueOnly(${x.id}, 'bonus', this.value)" onclick="event.stopPropagation()" title="獎金"></span>
-                <span style="font-size:12px; color:#6b7280;" id="wage_subtotal_${x.id}">(小計: <b style="color:#e87522">${money(subTotal)}</b>)</span>
-              </div>
-              <button class="danger" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:15px; padding-left:10px;">
+              <span style="width:120px; flex-shrink:0;">📅 ${x.date}</span>
+              <span style="width:120px; flex-shrink:0;">人員：<b>${esc(x.person)}</b></span>
+              <span style="width:120px; flex-shrink:0;">工資：<b style="color:#173b63;">${money(x.amount)}</b></span>
+              <span style="width:120px; flex-shrink:0;">獎金：<b style="color:#e87522;">${money(x.bonus || 0)}</b></span>
+              <span style="flex-grow:1; color:#6b7280;">(小計: <b>${money(subTotal)}</b>)</span>
+              <button class="danger" style="flex-shrink:0;" onclick="del('wages', ${x.id}); event.stopPropagation();">刪除</button>
             </div>
           </td>
         </tr>
