@@ -441,7 +441,7 @@ let currentQuoteId = null;
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [], expenses: [], wages: [], payments: [], quotesList: [],
-  categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', '其他'],
+  categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', 'other', '其他'],
   historyItems: [], historySpecs: [], historyPersons: [],
   activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 }
 };
@@ -550,7 +550,7 @@ function processPastedData() {
       }
     }
 
-    if (rowStr.includes('地址') || rowStr.includes('地點') || rowStr.includes('園街') || rowStr.includes('路') || rowStr.includes('街') || rowStr.includes('市') || rowStr.includes('区')) {
+    if (rowStr.includes('地址') || rowStr.includes('地點') || rowStr.includes('園街') || rowStr.includes('路') || rowStr.includes('街') || rowStr.includes('市') || rowStr.includes('區')) {
       let addrCell = r.find(cell => cell.includes('園街') || cell.includes('路') || cell.includes('市') || cell.includes('區') || cell.includes('巷') || cell.includes('街') || cell.includes('段'));
       if (addrCell) {
         address = addrCell.replace(/地點[：:]?|地址[：:]?/g, '').trim();
@@ -940,6 +940,7 @@ function renderDashboard() {
   const totalPaid = sum(filteredPayments);
   
   const totalRemain = filteredProjects.reduce((s, p) => s + totals(p).remain, 0);
+  const totalProjectProfit = totalProjectsAmount - totalExp - totalWages;
   const totalNetProfit = totalPaid - totalExp - totalWages;
 
   document.getElementById('totalCards').innerHTML = [
@@ -948,8 +949,9 @@ function renderDashboard() {
     ['歷史總支出', money(totalExp)],
     ['歷史總工資', money(totalWages)],
     ['總未收款餘額', money(totalRemain)],
+    ['累計工程毛利總計', money(totalProjectProfit)],
     ['全體歷年累計淨利', money(totalNetProfit)]
-  ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num" style="color:${x[0].includes('未收款') ? '#d97706' : '#173b63'}">${x[1]}</div></div>`).join('');
+  ].map(x => `<div class="card"><div class="label">${x[0]}</div><div class="num" style="color:${x[0].includes('未收款') ? '#d97706' : (x[0].includes('毛利') ? '#e87522' : '#173b63')}">${x[1]}</div></div>`).join('');
 
   const active = sortByDateDesc(db.projects.filter(p => p.status === '進行中'));
   document.getElementById('dashProjects').innerHTML = active.length ? 
