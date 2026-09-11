@@ -1271,19 +1271,27 @@ document.getElementById('payProject').onchange = (e) => { updateSubFormDates(e.t
 document.getElementById('projectForm').onsubmit = e => {
   e.preventDefault();
   let editId = document.getElementById('editingProjectId').value;
+  let newName = pName.value.trim();
   let newAmount = +pAmount.value;
   let newStatus = pStatus.value;
   let targetProjectId;
+  
+  // 防呆檢查：檢查是否有其他工程使用相同的名稱
+  let duplicate = db.projects.find(p => p.name.trim() === newName && p.id != editId);
+  if (duplicate) {
+    alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程，客戶／工程名稱不可重複！請修改名稱後再試。`);
+    return;
+  }
   
   if (editId) {
     let p = db.projects.find(x => x.id == editId);
     if (p) {
       targetProjectId = p.id;
-      p.date = pDate.value; p.address = pAddress.value; p.name = pName.value; p.amount = newAmount; p.status = newStatus;
+      p.date = pDate.value; p.address = pAddress.value; p.name = newName; p.amount = newAmount; p.status = newStatus;
     }
   } else {
     targetProjectId = uid();
-    db.projects.push({ id: targetProjectId, date: pDate.value, address: pAddress.value, name: pName.value, amount: newAmount, status: newStatus });
+    db.projects.push({ id: targetProjectId, date: pDate.value, address: pAddress.value, name: newName, amount: newAmount, status: newStatus });
   }
   
   if (newStatus === '已收款完成') {
