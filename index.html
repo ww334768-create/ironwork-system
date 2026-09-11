@@ -398,7 +398,6 @@ async function loadCloudData() {
             db = parsed;
             if(!db.quotesList) db.quotesList = [];
             if(!db.wages) db.wages = [];
-            // 兼容舊資料：若無 bonus 欄位補 0
             db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
             if(!db.historyPersons) db.historyPersons = [];
             db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
@@ -694,8 +693,14 @@ function renderQuoteHistory() {
 function convertToProject() {
   syncCurrentQuoteFromForm();
   let totalAmount = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
-  let name = db.activeQuote.name || prompt('請輸入此工程的名稱：') || '未命名工程';
-  let address = db.activeQuote.address || '未填寫地址';
+  
+  if (totalAmount === 0) {
+    let manualCheck = prompt('目前估價單總金額為 0，請確認總金額：', '0');
+    if (manualCheck !== null) totalAmount = parseFloat(manualCheck) || 0;
+  }
+
+  let name = db.activeQuote.name.trim() || prompt('請輸入此工程的名稱：') || '未命名工程';
+  let address = db.activeQuote.address.trim() || '未填寫地址';
   let date = db.activeQuote.date || today;
 
   db.projects.push({ id: uid(), date: date, address: address, name: name, amount: totalAmount, status: '進行中' });
