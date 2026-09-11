@@ -442,10 +442,10 @@ async function save() {
 }
 
 function importFromPastePrompt() {
-  let rawData = prompt('請直接前往您的 Google 試算表，把從「中華民國」到最後一筆項目的表格整塊框選複製起來，然後貼到下方欄位中：');
+  let rawData = prompt('請直接前往您的 Google 試算表，把估價單表格內容複製起來，然後貼到下方欄位中：');
   if (!rawData || !rawData.trim()) return;
 
-  let lines = rawData.split('\n').map(l => l.split('\t'));
+  let lines = rawData.split('\n').map(l => l.split('\t').map(c => c.trim()));
   let parsedDate = today;
   let address = '';
   let items = [];
@@ -465,25 +465,35 @@ function importFromPastePrompt() {
       }
     }
 
-    if (rowStr.includes('地址') || rowStr.includes('地點') || rowStr.includes('園街') || rowStr.includes('路') || rowStr.includes('街')) {
-      let addrCell = r.find(cell => String(cell).includes('園街') || String(cell).includes('路') || String(cell).includes('市') || String(cell).includes('區') || String(cell).includes('巷') || String(cell).includes('街'));
+    if (rowStr.includes('地址') || rowStr.includes('地點') || rowStr.includes('園街') || rowStr.includes('路') || rowStr.includes('街') || rowStr.includes('市') || rowStr.includes('區')) {
+      let addrCell = r.find(cell => cell.includes('園街') || cell.includes('路') || cell.includes('市') || cell.includes('區') || cell.includes('巷') || cell.includes('街') || cell.includes('段'));
       if (addrCell) {
-        address = String(addrCell).replace(/地點[：:]?|地址[：:]?/g, '').trim();
+        address = addrCell.replace(/地點[：:]?|地址[：:]?/g, '').trim();
       }
     }
 
-    if (rowStr.includes('項目包含') || rowStr.includes('不含')) {
+    if (rowStr.includes('項目包含') || rowStr.includes('不含') || rowStr.includes('備註')) {
       note = rowStr.trim();
     }
 
-    let firstCol = String(r[0] || '').trim();
-    if (/^\d+$/.test(firstCol) && r.length >= 7) {
-      let itemName = String(r[1] || '').trim();
-      let spec = String(r[2] || '').trim();
-      let qty = parseFloat(String(r[3]).replace(/,/g, '')) || 0;
-      let unit = String(r[4] || '').trim();
-      let price = parseFloat(String(r[5]).replace(/,/g, '')) || 0;
+    // 抓取項目列：只要第一欄是數字，或是第二欄有填工程項目名稱就視為品項
+    let firstCol = r[0] || '';
+    let itemName = r[1] || '';
+    if ((/^\d+$/.test(firstCol) && r.length >= 6) || (itemName && r.length >= 6 && !itemName.includes('工程估價單') && !itemName.includes('項目'))) {
+      let spec = r[2] || '';
+      let qty = parseFloat(String(r[3] || '').replace(/,/g, '')) || 0;
+      let unit = r[4] || '';
+      let price = parseFloat(String(r[5] || '').replace(/,/g, '')) || 0;
       let itemTotal = qty * price;
+
+      if (!itemName && r.length >= 7) {
+        itemName = r[2] || '';
+        spec = r[3] || '';
+        qty = parseFloat(String(r[4] || '').replace(/,/g, '')) || 0;
+        unit = r[5] || '';
+        price = parseFloat(String(r[6] || '').replace(/,/g, '')) || 0;
+        itemTotal = qty * price;
+      }
 
       if (itemName) {
         items.push({ name: itemName, spec: spec, qty: qty, unit: unit, price: price, total: itemTotal });
@@ -521,12 +531,10 @@ function renderQuote() {
   document.getElementById('qValidDays').value = q.validDays || 7;
   document.getElementById('qDepositPercent').value = q.depositPercent || 3;
 
-  // 自動計算總金額與預設 3 成訂金，帶入下方結算輸入框
   let calculatedTotal = (q.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
   document.getElementById('qTotalStr').value = calculatedTotal ? calculatedTotal.toLocaleString() : '';
   document.getElementById('qDepositStr').value = calculatedTotal ? Math.round(calculatedTotal * 0.3).toLocaleString() : '';
 
-  // 自動將日期帶入中華民國年月日
   if (q.date) {
     let parts = q.date.split('-');
     if (parts.length === 3) {
