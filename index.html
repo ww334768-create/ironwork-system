@@ -80,7 +80,6 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
 
-  /* 隱藏金額數字與日期數字 */
   #qTotalStr, #qDepositStr, #qYear, #qMonth, #qDay {
     color: transparent !important;
   }
@@ -92,7 +91,6 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     padding: 0 !important;
   }
 
-  /* 自動隱藏所有未填寫時的灰色提示文字 (placeholder) */
   .quote-paper input::placeholder,
   .quote-paper textarea::placeholder {
     color: transparent !important;
@@ -963,11 +961,11 @@ function renderDashboard() {
 
   const active = sortByDateDesc(db.projects.filter(p => p.status === '進行中'));
   document.getElementById('dashProjects').innerHTML = active.length ? 
-    `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#e87522">${money(t.profit)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">目前沒有進行中工程</div>';
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td>${p.date || '-'}</td><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#e87522">${money(t.profit)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">目前沒有進行中工程</div>';
 
   const rec = sortByDateDesc(db.projects.filter(p => totals(p).remain > 0));
   document.getElementById('dashReceivables').innerHTML = rec.length ?
-    `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工程總額</th><th>已收款</th><th>未收款</th></tr>${rec.map(p => { let t = totals(p); return `<tr><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.pa)}</td><td><b style="color:#d97706">${money(t.remain)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">所有工程皆已結清無未收款</div>';
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>工程總額</th><th>已收款</th><th>未收款</th></tr>${rec.map(p => { let t = totals(p); return `<tr><td>${p.date || '-'}</td><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.pa)}</td><td><b style="color:#d97706">${money(t.remain)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">所有工程皆已結清無未收款</div>';
 }
 
 function renderProjects() {
@@ -1365,7 +1363,7 @@ document.getElementById('paymentForm').onsubmit = e => {
   alert('收款紀錄新增成功！');
 };
 
-document.getElementById('pDate').value>today;
+document.getElementById('pDate').value = today;
 
 render(); renderQuote(); renderQuoteHistory(); loadCloudData();
 </script>
