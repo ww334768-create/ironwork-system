@@ -80,8 +80,10 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
 
-  /* 隱藏估價單下方的工程總金額、收訂金額與最下方的中華民國日期 */
-  .quote-summary-table { display: none !important; }
+  /* 隱藏金額數字與日期數字，但表格框線與文字保留 */
+  #qTotalStr, #qDepositStr, #qYear, #qMonth, #qDay {
+    color: transparent !important;
+  }
 
   .quote-paper input {
     border: none !important;
