@@ -1297,7 +1297,6 @@ function renderSalaryPage() {
   let totalSalarySum = 0;
 
   db.salaryAmounts = [3000, 2700];
-  let salaryOptionsHtml = '<option value="">-- 請選擇金額 --</option>' + db.salaryAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
 
   let rowsHtml = '';
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1308,19 +1307,29 @@ function renderSalaryPage() {
     let isRed = isWeekend || isHoliday;
 
     let dateKey = `${currentSalaryYear}-${String(currentSalaryMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '', off: false };
+    let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '', off: false, selfWork: false };
 
     let sVal = record.salary !== undefined ? record.salary : '';
     let isOff = record.off ? 'checked' : '';
+    let isSelfWork = record.selfWork ? 'checked' : '';
 
-    totalSalarySum += Number(sVal || 0);
+    if (!record.off) {
+      totalSalarySum += Number(sVal || 0);
+    }
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : '';
+    if (record.selfWork) {
+      colorStyle = 'color: #000080; font-weight: bold;';
+    }
 
     rowsHtml += `
       <tr>
-        <td style="width: 250px; ${colorStyle}">
+        <td style="width: 320px; ${colorStyle}">
           <div style="display:flex; align-items:center; gap:8px;">
+            <div style="border: 2px solid #e87522; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; background: #fffaf5;">
+              <input type="checkbox" id="self_${dateKey}" ${isSelfWork} onchange="updateSalaryData('${dateKey}')" style="width:16px; height:16px; cursor:pointer;" title="代表自己的工作" />
+              <label for="self_${dateKey}" style="margin:0; font-weight:bold; cursor:pointer; font-size:13px; color:#e87522;">⭐</label>
+            </div>
             <span>${currentSalaryYear}年${currentSalaryMonth}月${d}日 (週${weekDays[dayOfWeek]})</span>
             <input type="checkbox" id="off_${dateKey}" ${isOff} onchange="updateSalaryData('${dateKey}')" style="width:18px; height:18px; cursor:pointer;" title="休假打勾" />
             <label for="off_${dateKey}" style="margin:0; font-weight:normal; cursor:pointer; font-size:12px; color:#6b7280;">休假</label>
@@ -1328,8 +1337,9 @@ function renderSalaryPage() {
         </td>
         <td>
           <select id="sal_${dateKey}" onchange="updateSalaryData('${dateKey}')">
-            <option value="${sVal}">${sVal ? sVal : '-- 請選擇金額 --'}</option>
-            ${salaryOptionsHtml}
+            <option value="">請選擇金額</option>
+            <option value="3000" ${String(sVal) === '3000' ? 'selected' : ''}>3000</option>
+            <option value="2700" ${String(sVal) === '2700' ? 'selected' : ''}>2700</option>
           </select>
         </td>
       </tr>
@@ -1339,6 +1349,7 @@ function renderSalaryPage() {
   let totalIncome = totalSalarySum + Number(currentMonthBonus || 0);
 
   tableContainer.innerHTML = `
+    <div style="color: red; font-weight: bold; margin-bottom: 8px; font-size: 14px;">⭐代表自己的工作</div>
     <div class="table-responsive">
       <table>
         <thead>
@@ -1406,19 +1417,22 @@ function updateMonthBonus() {
 function updateSalaryData(dateKey) {
   let selectEl = document.getElementById(`sal_${dateKey}`);
   let offEl = document.getElementById(`off_${dateKey}`);
+  let selfEl = document.getElementById(`self_${dateKey}`);
 
-  let salaryVal = parseFloat(selectEl.value) || 0;
   let isOff = offEl ? offEl.checked : false;
-
-  if (!db.salaryRecords) db.salaryRecords = {};
-  db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff };
-
-  if (salaryVal > 0 && !db.salaryAmounts.includes(salaryVal)) {
-    db.salaryAmounts.push(salaryVal);
-    db.salaryAmounts.sort((a, b) => b - a);
+  let isSelfWork = selfEl ? selfEl.checked : false;
+  
+  if (isOff) {
+    selectEl.value = '0';
   }
 
+  let salaryVal = isOff ? 0 : (parseFloat(selectEl.value) || 0);
+
+  if (!db.salaryRecords) db.salaryRecords = {};
+  db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
+
   save();
+  renderSalaryPage();
 }
 
 function uid() { return Date.now() + Math.random().toString().slice(2,6); }
