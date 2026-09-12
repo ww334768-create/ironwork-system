@@ -1333,7 +1333,6 @@ function renderSalaryPage() {
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : 'color: #333;';
     
-    // 依據勾選狀態決定整行背景顏色（星星改為淺藍色 #e0f2fe，休假維持粉紅色）
     let rowHighlightClass = '';
     if (record.selfWork) {
       rowHighlightClass = 'salary-row-highlight';
@@ -1377,7 +1376,7 @@ function renderSalaryPage() {
       `;
     }
 
-    // 將「⭐ 為自己的工作」移到灰色日期上面那一行白色的空白處，並設定為紅色粗體
+    // ⭐ 移到日期白色上方並改為紅色粗體
     let specialHeaderHtml = record.selfWork ? `<div style="font-size:13px; color:red; font-weight:bold; line-height:1.2; margin-bottom:3px;">⭐ 為自己的工作</div>` : '';
 
     rowsHtml += `
