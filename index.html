@@ -1427,8 +1427,9 @@ function updateSalaryData(dateKey) {
   let isOff = offEl ? offEl.checked : false;
   let isSelfWork = selfEl ? selfEl.checked : false;
   
+  // 修正：當勾選休假或星星時，強制將下拉選單清空（歸零）
   if (isOff || isSelfWork) {
-    selectEl.value = '';
+    selectEl.value = "";
   }
 
   let salaryVal = (isOff || isSelfWork) ? 0 : (parseFloat(selectEl.value) || 0);
