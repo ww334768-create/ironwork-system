@@ -58,8 +58,8 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
 /* 薪水紀錄表點擊星星後的淺藍色整行樣式 */
 .salary-row-highlight { background-color: #e0f2fe !important; }
-/* 薪水金額數字改為橘色 */
-.salary-amount-text { color: #e87522; font-weight: bold; }
+/* 薪水金額數字固定顯示為橘色 */
+.salary-amount-fixed { color: #e87522; font-weight: bold; font-size: 15px; }
 
 .quote-paper{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);max-width:850px;margin:auto}
 .quote-header{text-align:center;border-bottom:2px solid #173b63;padding-bottom:8px;margin-bottom:12px}
@@ -499,6 +499,7 @@ let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
 
 if (!db.salaryRecords) db.salaryRecords = {};
 if (!db.monthBonuses) db.monthBonuses = {};
+if (!db.salaryEditingState) db.salaryEditingState = {};
 
 db.salaryAmounts = [3000, 2700];
 
@@ -529,6 +530,7 @@ async function loadCloudData() {
             if(!db.wages) db.wages = [];
             if(!db.salaryRecords) db.salaryRecords = {};
             if(!db.monthBonuses) db.monthBonuses = {};
+            if(!db.salaryEditingState) db.salaryEditingState = {};
             db.salaryAmounts = [3000, 2700];
             db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
             if(!db.historyPersons) db.historyPersons = [];
@@ -1300,7 +1302,6 @@ function renderSalaryPage() {
   let weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
   let totalSalarySum = 0;
-
   db.salaryAmounts = [3000, 2700];
 
   let rowsHtml = '';
@@ -1318,7 +1319,7 @@ function renderSalaryPage() {
     let isOff = record.off ? 'checked' : '';
     let isSelfWork = record.selfWork ? 'checked' : '';
 
-    // 計算當天薪資：若未手動選擇金額、或勾選休假、或勾選星星，則為 0
+    // 若休假或打勾星星，薪水自動變為 0
     let effectiveSalary = 0;
     if (record.off || record.selfWork) {
       effectiveSalary = 0;
@@ -1332,12 +1333,43 @@ function renderSalaryPage() {
       colorStyle = 'color: #000080; font-weight: bold;';
     }
 
-    // 依據是否勾選星星決定整行是否套用淺藍色背景
     let rowHighlightClass = record.selfWork ? 'salary-row-highlight' : '';
+    let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
+
+    // 金額欄位顯示邏輯：編輯模式顯示下拉選單，固定模式顯示橘色固定字串與編輯按鈕
+    let salaryCellContent = '';
+    if (isEditing) {
+      salaryCellContent = `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <select id="sal_${dateKey}" style="flex:1;">
+            <option value="" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>請選擇金額</option>
+            <option value="3000" ${String(sVal) === '3000' && !record.off && !record.selfWork ? 'selected' : ''}>$3,000</option>
+            <option value="2700" ${String(sVal) === '2700' && !record.off && !record.selfWork ? 'selected' : ''}>$2,700</option>
+          </select>
+          <button class="primary" style="padding:6px 12px; font-size:13px;" onclick="saveSalaryRow('${dateKey}')">儲存</button>
+        </div>
+      `;
+    } else {
+      let displayAmountText = '';
+      if (record.off || record.selfWork) {
+        displayAmountText = '$0';
+      } else if (sVal !== '' && sVal !== null && sVal !== undefined) {
+        displayAmountText = '$' + Number(sVal).toLocaleString();
+      } else {
+        displayAmountText = '請選擇金額';
+      }
+
+      salaryCellContent = `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <span class="salary-amount-fixed">${displayAmountText}</span>
+          <button class="secondary" style="padding:5px 10px; font-size:12px;" onclick="editSalaryRow('${dateKey}')">編輯</button>
+        </div>
+      `;
+    }
 
     rowsHtml += `
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
-        <td style="width: 320px; ${colorStyle}">
+        <td style="width: 330px; ${colorStyle}">
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="border: 2px solid #e87522; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; background: #fffaf5;">
               <input type="checkbox" id="self_${dateKey}" ${isSelfWork} onchange="updateSalaryData('${dateKey}')" style="width:16px; height:16px; cursor:pointer;" title="代表自己的工作" />
@@ -1349,11 +1381,7 @@ function renderSalaryPage() {
           </div>
         </td>
         <td>
-          <select id="sal_${dateKey}" class="salary-amount-text" onchange="updateSalaryData('${dateKey}')">
-            <option value="" style="color:#1f2937; font-weight:normal;" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>$0 (請選擇金額)</option>
-            <option value="3000" ${String(sVal) === '3000' && !record.off && !record.selfWork ? 'selected' : ''}>$3,000</option>
-            <option value="2700" ${String(sVal) === '2700' && !record.off && !record.selfWork ? 'selected' : ''}>$2,700</option>
-          </select>
+          ${salaryCellContent}
         </td>
       </tr>
     `;
@@ -1368,7 +1396,7 @@ function renderSalaryPage() {
         <thead>
           <tr style="background:#f2f2f2">
             <th>日期 (週次與休假勾選)</th>
-            <th>薪水金額 (選擇後會變成橘色數字，休假或勾選星星會自動變成 $0)</th>
+            <th>薪水金額 (橘色固定字體，點擊編輯按鈕可修改)</th>
           </tr>
         </thead>
         <tbody>
@@ -1427,22 +1455,44 @@ function updateMonthBonus() {
   renderSalaryPage();
 }
 
-function updateSalaryData(dateKey) {
+function editSalaryRow(dateKey) {
+  if (!db.salaryEditingState) db.salaryEditingState = {};
+  db.salaryEditingState[dateKey] = true;
+  renderSalaryPage();
+}
+
+function saveSalaryRow(dateKey) {
   let selectEl = document.getElementById(`sal_${dateKey}`);
   let offEl = document.getElementById(`off_${dateKey}`);
   let selfEl = document.getElementById(`self_${dateKey}`);
 
   let isOff = offEl ? offEl.checked : false;
   let isSelfWork = selfEl ? selfEl.checked : false;
-  
-  // 當勾選休假或星星時，強制將下拉選單清空（歸零）
-  if (isOff || isSelfWork) {
-    selectEl.value = "";
-  }
-
-  let salaryVal = (isOff || isSelfWork) ? 0 : selectEl.value;
+  let salaryVal = (isOff || isSelfWork) ? 0 : (selectEl ? selectEl.value : '');
 
   if (!db.salaryRecords) db.salaryRecords = {};
+  db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
+
+  if (!db.salaryEditingState) db.salaryEditingState = {};
+  db.salaryEditingState[dateKey] = false;
+
+  save();
+  renderSalaryPage();
+}
+
+function updateSalaryData(dateKey) {
+  let offEl = document.getElementById(`off_${dateKey}`);
+  let selfEl = document.getElementById(`self_${dateKey}`);
+
+  let isOff = offEl ? offEl.checked : false;
+  let isSelfWork = selfEl ? selfEl.checked : false;
+  
+  if (!db.salaryRecords) db.salaryRecords = {};
+  let existing = db.salaryRecords[dateKey] || { salary: '' };
+  
+  // 若勾選休假或星星，薪水自動歸零
+  let salaryVal = (isOff || isSelfWork) ? 0 : existing.salary;
+
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
 
   save();
