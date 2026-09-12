@@ -1370,6 +1370,7 @@ function renderSalaryPage() {
     rowsHtml += `
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
         <td style="width: 350px; ${colorStyle}">
+          <div style="font-size:11px; color:#dc2626; line-height:1.2; margin-bottom:2px;">⭐ 為自己的工作</div>
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="display: inline-flex; align-items: center;">
               <input type="checkbox" id="self_${dateKey}" ${isSelfWork} onchange="updateSalaryData('${dateKey}')" style="width:16px; height:16px; cursor:pointer;" />
