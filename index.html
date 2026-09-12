@@ -1376,8 +1376,8 @@ function renderSalaryPage() {
       `;
     }
 
-    // ⭐ 移到日期白色上方並改為紅色粗體
-    let specialHeaderHtml = record.selfWork ? `<div style="font-size:13px; color:red; font-weight:bold; line-height:1.2; margin-bottom:3px;">⭐ 為自己的工作</div>` : '';
+    // ⭐ 移到日期上方白色空白處並改為紅色粗體（僅在勾選星星時計算出現）
+    let specialHeaderHtml = record.selfWork ? `<div style="font-size:13px; color:red; font-weight:bold; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px;">⭐ 為自己的工作</div>` : `<div style="font-size:13px; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px; visibility:hidden;">&nbsp;</div>`;
 
     rowsHtml += `
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
