@@ -101,7 +101,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 <body>
 <header>
   <h1>🏗️ 郭子郭工作管理系統</h1>
-  <p>工程、估價單、支出、工資與損益一站管理 (☁️ 雲端同步版)</p>
+  <p>工程、估價單, 支出、工資與損益一站管理 (☁️ 雲端同步版)</p>
 </header>
 
 <nav id="nav">
@@ -111,6 +111,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   <button data-page="expenses">工程支出</button>
   <button data-page="wages">人員工資</button>
   <button data-page="payments">客戶收款</button>
+  <button data-page="salary">薪水紀錄表</button>
 </nav>
 
 <main>
@@ -211,6 +212,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
       <datalist id="itemHistoryList"></datalist>
       <datalist id="specHistoryList"></datalist>
+      <datalist id="salaryHistoryList"></datalist>
 
       <div class="no-print" style="margin-top:10px;margin-bottom:15px">
         <button class="secondary" onclick="addQuoteRow()">＋ 新增品項欄位</button>
@@ -221,8 +223,8 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div class="quote-terms">
             <div>1. 本估價單有效期間 <input id="qValidDays" type="number" value="7" style="width:40px;text-align:center"> 天。</div>
             <div>2. 如蒙惠顧請先付訂金 <input id="qDepositPercent" type="number" value="3" style="width:40px;text-align:center"> 成。</div>
-            <div>3. 收款方式：簽約請付三分之一訂金，現場入料施工三分之一，完工後驗收收尾款（鋼骨工程內，不含全部工程完工）。</div>
-            <div>4. 依估價單項目為主，如有增加另計。</div>
+            <div>3. 收款方式：簽約請付三分之一訂金, 現場入料施工三分之一, 完工後驗收收尾款（鋼骨工程內, 不含全部工程完工）。</div>
+            <div>4. 依估價單項目為主, 如有增加另計。</div>
           </div>
           <div class="quote-agent">
             <div>經手人：<input id="qAgent" placeholder="請輸入姓名/電話" style="border-bottom:1px solid #000;border-radius:0;width:130px"></div>
@@ -361,6 +363,25 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     </div>
     <div class="section"><h2>收款紀錄列表</h2><div id="paymentList"></div></div>
   </section>
+
+  <!-- 薪水紀錄表 -->
+  <section id="salary" class="page">
+    <div class="section">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:15px;">
+        <h2 style="margin:0;">💵 全年薪水與獎金紀錄表</h2>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label for="salaryYearSelect" style="margin:0; font-weight:bold;">選擇年份：</label>
+          <select id="salaryYearSelect" onchange="changeSalaryYear()" style="width:110px; font-weight:bold; color:#173b63;"></select>
+        </div>
+      </div>
+
+      <!-- 月份按鈕列 -->
+      <div id="salaryMonthButtons" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;"></div>
+
+      <!-- 該月份薪水紀錄表格 -->
+      <div id="salaryTableContainer"></div>
+    </div>
+  </section>
 </main>
 
 <!-- 貼上匯入專用互動視窗 -->
@@ -441,16 +462,22 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbxHkU3rSgVg_wjyvaDJpmWtWyV0KYAIcthj-ojKv5iUBWYLXmu9YH0lfq-mWdA-ayn-/exec";
 const KEY = 'iron_work_system_data';
-const today = new Date().toISOString().split('T')[0];
+const todayDateObj = new Date();
+const today = todayDateObj.toISOString().split('T')[0];
 
 let currentQuoteId = null;
+let currentSalaryYear = todayDateObj.getFullYear();
+let currentSalaryMonth = todayDateObj.getMonth() + 1; // 1-12
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
-  projects: [], expenses: [], wages: [], payments: [], quotesList: [],
+  projects: [], expenses: [], wages: [], payments: [], quotesList: [], salaryRecords: {}, salaryAmounts: [],
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', 'other', '其他'],
   historyItems: [], historySpecs: [], historyPersons: [],
   activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 }
 };
+
+if (!db.salaryRecords) db.salaryRecords = {};
+if (!db.salaryAmounts) db.salaryAmounts = [2000, 2200, 2500, 3000];
 
 if (db.historyPersons) {
   db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
@@ -465,7 +492,7 @@ function sortByDateDesc(arr) {
 
 async function loadCloudData() {
   const statusEl = document.getElementById('syncText');
-  statusEl.textContent = '☁️ 雲端同步中，正在讀取最新資料...';
+  statusEl.textContent = '☁️ 雲端同步中, 正在讀取最新資料...';
   try {
     const res = await fetch(API_URL);
     const cloudData = await res.json();
@@ -477,12 +504,14 @@ async function loadCloudData() {
             db = parsed;
             if(!db.quotesList) db.quotesList = [];
             if(!db.wages) db.wages = [];
+            if(!db.salaryRecords) db.salaryRecords = {};
+            if(!db.salaryAmounts) db.salaryAmounts = [2000, 2200, 2500, 3000];
             db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
             if(!db.historyPersons) db.historyPersons = [];
             db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
             localStorage.setItem(KEY, JSON.stringify(db));
             statusEl.textContent = '✅ 雲端同步完成！';
-            render(); renderQuote(); renderQuoteHistory();
+            render(); renderQuote(); renderQuoteHistory(); renderSalaryPage();
             return;
           }
         } catch(e) {}
@@ -490,13 +519,13 @@ async function loadCloudData() {
     }
     statusEl.textContent = '✅ 已連接雲端資料庫。';
   } catch (err) {
-    statusEl.textContent = '⚠️ 雲端連線失敗，目前顯示離線暫存資料。';
+    statusEl.textContent = '⚠️ 雲端連線失敗, 目前顯示離線暫存資料。';
   }
 }
 
 async function save() {
   localStorage.setItem(KEY, JSON.stringify(db));
-  render(); renderQuoteHistory();
+  render(); renderQuoteHistory(); renderSalaryPage();
   const statusEl = document.getElementById('syncText');
   statusEl.textContent = '⏳ 正在同步至雲端...';
   try {
@@ -509,6 +538,8 @@ async function save() {
           wages: db.wages,
           payments: db.payments,
           quotesList: db.quotesList,
+          salaryRecords: db.salaryRecords,
+          salaryAmounts: db.salaryAmounts,
           categories: db.categories,
           historyItems: db.historyItems,
           historySpecs: db.historySpecs,
@@ -518,7 +549,7 @@ async function save() {
     });
     statusEl.textContent = '✅ 異動已成功同步至雲端！';
   } catch (err) {
-    statusEl.textContent = '⚠️ 雲端同步失敗，已存於本機。';
+    statusEl.textContent = '⚠️ 雲端同步失敗, 已存於本機。';
   }
 }
 
@@ -806,7 +837,7 @@ function convertToProject() {
   let totalAmount = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
   
   if (totalAmount === 0) {
-    let manualCheck = prompt('目前估價單總金額為 0，請確認總金額：', '0');
+    let manualCheck = prompt('目前估價單總金額為 0, 請確認總金額：', '0');
     if (manualCheck !== null) totalAmount = parseFloat(manualCheck) || 0;
   }
 
@@ -836,7 +867,7 @@ function totals(p) {
 }
 
 function render() {
-  renderSelects(); renderDashboard(); renderProjects(); renderExpenses(); renderWages(); renderPayments();
+  renderSelects(); renderDashboard(); renderProjects(); renderExpenses(); renderWages(); renderPayments(); renderSalaryPage();
 }
 
 function renderSelects() {
@@ -1194,74 +1225,160 @@ function renderPayments() {
     `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>折扣金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td><span style="color:#e87522">${money(x.discount || 0)}</span></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
 }
 
-function uid() { return Date.now() + Math.random().toString().slice(2,6); }
-function del(type, n) {
-  if (confirm('確定要刪除這筆紀錄嗎？')) {
-    db[type] = db[type].filter(x => x.id != n);
-    if (type === 'projects' && document.getElementById('editingProjectId').value == n) resetProjectForm();
-    save();
-  }
-}
+/* 台灣國定假日對照表 (固定假日 + 簡易農曆節日/彈性放假推算或常態國定假日) */
+function isTaiwanHoliday(year, month, day) {
+  let dStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  // 固定國定假日
+  const fixedHolidays = [
+    `${year}-01-01`, // 開國紀念日
+    `${year}-02-28`, // 和平紀念日
+    `${year}-04-04`, // 兒童節
+    `${year}-05-01`, // 勞動節
+    `${year}-10-10`  // 國慶日
+  ];
+  if (fixedHolidays.includes(dStr)) return true;
 
-function addCategory() {
-  let x = prompt('請輸入新的支出項目名稱：');
-  if (x && x.trim()) {
-    if (!db.categories.includes(x.trim())) db.categories.push(x.trim());
-    save();
-    document.getElementById('eCategory').value = x.trim();
-  }
-}
-
-function addPerson() {
-  let x = prompt('請輸入新的師傅／人員姓名：');
-  if (x && x.trim()) {
-    if (!db.historyPersons) db.historyPersons = [];
-    if (!db.historyPersons.includes(x.trim())) db.historyPersons.push(x.trim());
-    save();
-    document.getElementById('wPerson').value = x.trim();
-  }
-}
-
-function detail(id) {
-  const p = proj(id), t = totals(p);
-  document.getElementById('detailBox').innerHTML = `
-    <h2>🏗️ ${esc(p.name)}</h2>
-    <p>📍 地址：${esc(p.address)}</p>
-    <p class="small">日期：${p.date} ｜ 狀態：${p.status}</p>
-    <hr>
-    <div class="cards">
-      <div class="card"><div class="label">工程總金額</div><div class="num">${money(p.amount)}</div></div>
-      <div class="card"><div class="label">材料／雜支</div><div class="num">${money(t.ex)}</div></div>
-      <div class="card"><div class="label">總工資(含獎金)</div><div class="num">${money(t.wa)}</div></div>
-      <div class="card"><div class="label">工程剩餘／毛利</div><div class="num" style="color:#e87522">${money(t.profit)}</div></div>
-      <div class="card"><div class="label">已收款</div><div class="num">${money(t.pa)}</div></div>
-      <div class="card"><div class="label">未收款</div><div class="num" style="color:#d97706">${money(t.remain)}</div></div>
-    </div>
-    <div class="actions" style="margin-top:20px">
-      <button class="primary" onclick="document.getElementById('detailModal').classList.remove('show')">關閉視窗</button>
-    </div>`;
-  document.getElementById('detailModal').classList.add('show');
-}
-
-function exportData() {
-  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = '郭子郭系統備份_' + today + '.json'; a.click();
-}
-
-function importData(ev) {
-  const f = ev.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    try {
-      const x = JSON.parse(r.result);
-      if (confirm('確定要使用此備份檔覆蓋目前的資料嗎？')) { db = x; save(); alert('資料還原成功！'); }
-    } catch (e) { alert('備份檔格式不正確！'); }
+  // 簡易年度特定重要民俗節日 (以2026年為例或常見約略，可依需求擴充)
+  // 2026 年清明節 4/5, 端午節 6/19, 中秋節 9/25 等
+  const dynamicHolidays = {
+    2026: ['2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20', '2026-04-05', '2026-06-19', '2026-09-25', '2026-09-26']
   };
-  r.readAsText(f);
+  if (dynamicHolidays[year] && dynamicHolidays[year].includes(dStr)) return true;
+
+  return false;
 }
 
-function esc(s) { return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+function renderSalaryPage() {
+  // 年份下拉
+  let yearSelect = document.getElementById('salaryYearSelect');
+  if (yearSelect) {
+    let years = [todayDateObj.getFullYear()-1, todayDateObj.getFullYear(), todayDateObj.getFullYear()+1, todayDateObj.getFullYear()+2];
+    yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === currentSalaryYear ? 'selected' : ''}>${y} 年</option>`).join('');
+  }
+
+  // 月份按鈕列
+  let monthContainer = document.getElementById('salaryMonthButtons');
+  if (monthContainer) {
+    let mHtml = '';
+    for (let m = 1; m <= 12; m++) {
+      let activeClass = (m === currentSalaryMonth) ? 'primary' : 'secondary';
+      mHtml += `<button class="${activeClass}" style="padding:6px 12px; font-size:14px;" onclick="changeSalaryMonth(${m})">${m} 月</button>`;
+    }
+    monthContainer.innerHTML = mHtml;
+  }
+
+  // 渲染該月份天數表格
+  let tableContainer = document.getElementById('salaryTableContainer');
+  if (!tableContainer) return;
+
+  let daysInMonth = new Date(currentSalaryYear, currentSalaryMonth, 0).getDate();
+  let weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
+  let totalSalarySum = 0;
+  let totalBonusSum = 0;
+
+  // 下拉記憶選項列表
+  let salaryOptionsHtml = '<option value="">-- 選擇或自訂 --</option>' + (db.salaryAmounts || []).map(amt => `<option value="${amt}">${amt}</option>`).join('');
+
+  let rowsHtml = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    let dateObj = new Date(currentSalaryYear, currentSalaryMonth - 1, d);
+    let dayOfWeek = dateObj.getDay();
+    let isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+    let isHoliday = isTaiwanHoliday(currentSalaryYear, currentSalaryMonth, d);
+    let isRed = isWeekend || isHoliday;
+
+    let dateKey = `${currentSalaryYear}-${String(currentSalaryMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '', bonus: '' };
+
+    let sVal = record.salary !== undefined ? record.salary : '';
+    let bVal = record.bonus !== undefined ? record.bonus : '';
+
+    totalSalarySum += Number(sVal || 0);
+    totalBonusSum += Number(bVal || 0);
+
+    let colorStyle = isRed ? 'color: red; font-weight: bold;' : '';
+
+    rowsHtml += `
+      <tr>
+        <td style="width: 180px; ${colorStyle}">${currentSalaryYear}年${currentSalaryMonth}月${d}日 (週${weekDays[dayOfWeek]})</td>
+        <td>
+          <div style="display:flex; gap:6px;">
+            <select id="sal_${dateKey}" onchange="updateSalaryData('${dateKey}')" style="flex:2;">
+              <option value="${sVal}">${sVal ? sVal : '-- 請選擇金額 --'}</option>
+              ${salaryOptionsHtml}
+            </select>
+            <input type="number" id="custom_sal_${dateKey}" placeholder="自訂金額" value="${sVal}" oninput="updateSalaryCustom('${dateKey}')" style="flex:1;" />
+          </div>
+        </td>
+        <td>
+          <input type="number" id="bon_${dateKey}" value="${bVal}" placeholder="0" oninput="updateSalaryData('${dateKey}')" style="width:100%;" />
+        </td>
+      </tr>
+    `;
+  }
+
+  tableContainer.innerHTML = `
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr style="background:#f2f2f2">
+            <th>日期</th>
+            <th>薪水 (可下拉選擇或手動輸入)</th>
+            <th>獎金</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+        <tfoot>
+          <tr style="background:#fafafa; font-weight:bold; font-size:15px;">
+            <td style="text-align:right; padding-right:12px;">${currentSalaryMonth}月份總計：</td>
+            <td style="color:#173b63;">薪水總額：${money(totalSalarySum)}</td>
+            <td style="color:#e87522;">獎金總額：${money(totalBonusSum)} (總收入: ${money(totalSalarySum + totalBonusSum)})</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+}
+
+function changeSalaryYear() {
+  currentSalaryYear = parseInt(document.getElementById('salaryYearSelect').value);
+  renderSalaryPage();
+}
+
+function changeSalaryMonth(m) {
+  currentSalaryMonth = m;
+  renderSalaryPage();
+}
+
+function updateSalaryData(dateKey) {
+  let selectEl = document.getElementById(`sal_${dateKey}`);
+  let customEl = document.getElementById(`custom_sal_${dateKey}`);
+  let bonusEl = document.getElementById(`bon_${dateKey}`);
+
+  let salaryVal = customEl.value ? parseFloat(customEl.value) || 0 : (parseFloat(selectEl.value) || 0);
+  let bonusVal = parseFloat(bonusEl.value) || 0;
+
+  if (!db.salaryRecords) db.salaryRecords = {};
+  db.salaryRecords[dateKey] = { salary: salaryVal, bonus: bonusVal };
+
+  // 記憶常用薪水金額至下拉選項
+  if (salaryVal > 0 && !db.salaryAmounts.includes(salaryVal)) {
+    db.salaryAmounts.push(salaryVal);
+    db.salaryAmounts.sort((a,b)=>a-b);
+  }
+
+  save();
+}
+
+function updateSalaryCustom(dateKey) {
+  let customEl = document.getElementById(`custom_sal_${dateKey}`);
+  let selectEl = document.getElementById(`sal_${dateKey}`);
+  if (selectEl) selectEl.value = customEl.value;
+  updateSalaryData(dateKey);
+}
 
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
@@ -1284,7 +1401,7 @@ document.getElementById('projectForm').onsubmit = e => {
   
   let duplicate = db.projects.find(p => p.name.trim() === newName && p.id != editId);
   if (duplicate) {
-    alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程，客戶／工程名稱不可重複！請修改名稱後再試。`);
+    alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程, 客戶／工程名稱不可重複！請修改名稱後再試。`);
     return;
   }
   
@@ -1344,12 +1461,12 @@ document.getElementById('paymentForm').onsubmit = e => {
 
   let maxAllowed = p.amount - currentTotalPaid;
   if (maxAllowed <= 0) {
-    alert('⚠️ 防呆警示：此工程已經全數收滿（無剩餘未收款），無法再新增收款！');
+    alert('⚠️ 防呆警示：此工程已經全數收滿（無剩餘未收款）, 無法再新增收款！');
     return;
   }
 
   if ((payAmt + discAmt) > maxAllowed) {
-    alert(`⚠️ 申報金額加折扣（$${payAmt + discAmt}）超過了此工程目前的未收款餘額（$${maxAllowed}），請重新確認金額與折扣！`);
+    alert(`⚠️ 申報金額加折扣（$${payAmt + discAmt}）超過了此工程目前的未收款餘額（$${maxAllowed}）, 請重新確認金額與折扣！`);
     return;
   }
 
@@ -1365,7 +1482,7 @@ document.getElementById('paymentForm').onsubmit = e => {
 
 document.getElementById('pDate').value = today;
 
-render(); renderQuote(); renderQuoteHistory(); loadCloudData();
+render(); renderQuote(); renderQuoteHistory(); renderSalaryPage(); loadCloudData();
 </script>
 </body>
 </html>
