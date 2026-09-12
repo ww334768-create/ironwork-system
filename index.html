@@ -470,7 +470,7 @@ let currentSalaryMonth = todayDateObj.getMonth() + 1;
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [], expenses: [], wages: [], payments: [], quotesList: [], salaryRecords: {}, salaryAmounts: [],
-  categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', 'other', '其他'],
+  categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', 'other', 'other', '其他'],
   historyItems: [], historySpecs: [], historyPersons: [],
   activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 }
 };
@@ -1224,6 +1224,7 @@ function renderPayments() {
     `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>折扣金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td><span style="color:#e87522">${money(x.discount || 0)}</span></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
 }
 
+/* 台灣國定假日與週末紅字判定 */
 function isTaiwanHoliday(year, month, day) {
   let dStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   const fixedHolidays = [
@@ -1369,6 +1370,75 @@ function updateSalaryCustom(dateKey) {
   if (selectEl) selectEl.value = customEl.value;
   updateSalaryData(dateKey);
 }
+
+function uid() { return Date.now() + Math.random().toString().slice(2,6); }
+function del(type, n) {
+  if (confirm('確定要刪除這筆紀錄嗎？')) {
+    db[type] = db[type].filter(x => x.id != n);
+    if (type === 'projects' && document.getElementById('editingProjectId').value == n) resetProjectForm();
+    save();
+  }
+}
+
+function addCategory() {
+  let x = prompt('請輸入新的支出項目名稱：');
+  if (x && x.trim()) {
+    if (!db.categories.includes(x.trim())) db.categories.push(x.trim());
+    save();
+    document.getElementById('eCategory').value = x.trim();
+  }
+}
+
+function addPerson() {
+  let x = prompt('請輸入新的師傅／人員姓名：');
+  if (x && x.trim()) {
+    if (!db.historyPersons) db.historyPersons = [];
+    if (!db.historyPersons.includes(x.trim())) db.historyPersons.push(x.trim());
+    save();
+    document.getElementById('wPerson').value = x.trim();
+  }
+}
+
+function detail(id) {
+  const p = proj(id), t = totals(p);
+  document.getElementById('detailBox').innerHTML = `
+    <h2>🏗️ ${esc(p.name)}</h2>
+    <p>📍 地址：${esc(p.address)}</p>
+    <p class="small">日期：${p.date} ｜ 狀態：${p.status}</p>
+    <hr>
+    <div class="cards">
+      <div class="card"><div class="label">工程總金額</div><div class="num">${money(p.amount)}</div></div>
+      <div class="card"><div class="label">材料／雜支</div><div class="num">${money(t.ex)}</div></div>
+      <div class="card"><div class="label">總工資(含獎金)</div><div class="num">${money(t.wa)}</div></div>
+      <div class="card"><div class="label">工程剩餘／毛利</div><div class="num" style="color:#e87522">${money(t.profit)}</div></div>
+      <div class="card"><div class="label">已收款</div><div class="num">${money(t.pa)}</div></div>
+      <div class="card"><div class="label">未收款</div><div class="num" style="color:#d97706">${money(t.remain)}</div></div>
+    </div>
+    <div class="actions" style="margin-top:20px">
+      <button class="primary" onclick="document.getElementById('detailModal').classList.remove('show')">關閉視窗</button>
+    </div>`;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = '郭子郭系統備份_' + today + '.json'; a.click();
+}
+
+function importData(ev) {
+  const f = ev.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const x = JSON.parse(r.result);
+      if (confirm('確定要使用此備份檔覆蓋目前的資料嗎？')) { db = x; save(); alert('資料還原成功！'); }
+    } catch (e) { alert('備份檔格式不正確！'); }
+  };
+  r.readAsText(f);
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
 
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
