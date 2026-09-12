@@ -377,6 +377,23 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
       <!-- 月份按鈕列 -->
       <div id="salaryMonthButtons" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;"></div>
 
+      <!-- 最上方自訂金額與獎金區塊 -->
+      <div style="background:#f9fafb; padding:15px; border-radius:10px; margin-bottom:16px; border:1px solid #e5e7eb; display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;">
+        <div style="flex:1; min-width:250px;">
+          <label style="font-weight:bold; color:#173b63;">➕ 自訂新增常用薪水金額選項：</label>
+          <div style="display:flex; gap:8px; margin-top:5px;">
+            <input type="number" id="newSalaryOptionInput" placeholder="例如: 2800" style="flex:1;" />
+            <button class="secondary" onclick="addNewSalaryOption()">新增金額選項</button>
+          </div>
+        </div>
+        <div style="flex:1; min-width:280px;">
+          <label style="font-weight:bold; color:#e87522;" id="monthBonusLabel">🎁 該月份獎金設定 (以整個月為主)：</label>
+          <div style="display:flex; gap:8px; margin-top:5px;">
+            <input type="number" id="monthBonusInput" placeholder="輸入整月獎金金額" oninput="updateMonthBonus()" style="flex:1;" />
+          </div>
+        </div>
+      </div>
+
       <!-- 該月份薪水紀錄表格 -->
       <div id="salaryTableContainer"></div>
     </div>
@@ -469,14 +486,19 @@ let currentSalaryYear = todayDateObj.getFullYear();
 let currentSalaryMonth = todayDateObj.getMonth() + 1;
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
-  projects: [], expenses: [], wages: [], payments: [], quotesList: [], salaryRecords: {}, salaryAmounts: [],
+  projects: [], expenses: [], wages: [], payments: [], quotesList: [], salaryRecords: {}, salaryAmounts: [], monthBonuses: {},
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', 'other', 'other', '其他'],
   historyItems: [], historySpecs: [], historyPersons: [],
   activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 }
 };
 
 if (!db.salaryRecords) db.salaryRecords = {};
-if (!db.salaryAmounts) db.salaryAmounts = [2000, 2200, 2500, 3000];
+if (!db.monthBonuses) db.monthBonuses = {};
+if (!db.salaryAmounts || db.salaryAmounts.length === 0) {
+  db.salaryAmounts = [2700];
+} else if (!db.salaryAmounts.includes(2700)) {
+  db.salaryAmounts.push(2700);
+}
 
 if (db.historyPersons) {
   db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
@@ -504,7 +526,9 @@ async function loadCloudData() {
             if(!db.quotesList) db.quotesList = [];
             if(!db.wages) db.wages = [];
             if(!db.salaryRecords) db.salaryRecords = {};
-            if(!db.salaryAmounts) db.salaryAmounts = [2000, 2200, 2500, 3000];
+            if(!db.monthBonuses) db.monthBonuses = {};
+            if(!db.salaryAmounts) db.salaryAmounts = [2700];
+            if(!db.salaryAmounts.includes(2700)) db.salaryAmounts.push(2700);
             db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
             if(!db.historyPersons) db.historyPersons = [];
             db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
@@ -538,6 +562,7 @@ async function save() {
           payments: db.payments,
           quotesList: db.quotesList,
           salaryRecords: db.salaryRecords,
+          monthBonuses: db.monthBonuses,
           salaryAmounts: db.salaryAmounts,
           categories: db.categories,
           historyItems: db.historyItems,
@@ -1261,6 +1286,12 @@ function renderSalaryPage() {
     monthContainer.innerHTML = mHtml;
   }
 
+  let monthBonusKey = `${currentSalaryYear}-${currentSalaryMonth}`;
+  let currentMonthBonus = (db.monthBonuses && db.monthBonuses[monthBonusKey]) !== undefined ? db.monthBonuses[monthBonusKey] : 0;
+  
+  let monthBonusInputEl = document.getElementById('monthBonusInput');
+  if (monthBonusInputEl) monthBonusInputEl.value = currentMonthBonus || '';
+
   let tableContainer = document.getElementById('salaryTableContainer');
   if (!tableContainer) return;
 
@@ -1268,9 +1299,8 @@ function renderSalaryPage() {
   let weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
   let totalSalarySum = 0;
-  let totalBonusSum = 0;
 
-  let salaryOptionsHtml = '<option value="">-- 選擇或自訂 --</option>' + (db.salaryAmounts || []).map(amt => `<option value="${amt}">${amt}</option>`).join('');
+  let salaryOptionsHtml = '<option value="">-- 請選擇金額 --</option>' + (db.salaryAmounts || []).map(amt => `<option value="${amt}">${amt}</option>`).join('');
 
   let rowsHtml = '';
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1281,19 +1311,17 @@ function renderSalaryPage() {
     let isRed = isWeekend || isHoliday;
 
     let dateKey = `${currentSalaryYear}-${String(currentSalaryMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '', bonus: '' };
+    let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '' };
 
     let sVal = record.salary !== undefined ? record.salary : '';
-    let bVal = record.bonus !== undefined ? record.bonus : '';
 
     totalSalarySum += Number(sVal || 0);
-    totalBonusSum += Number(bVal || 0);
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : '';
 
     rowsHtml += `
       <tr>
-        <td style="width: 180px; ${colorStyle}">${currentSalaryYear}年${currentSalaryMonth}月${d}日 (週${weekDays[dayOfWeek]})</td>
+        <td style="width: 220px; ${colorStyle}">${currentSalaryYear}年${currentSalaryMonth}月${d}日 (週${weekDays[dayOfWeek]})</td>
         <td>
           <div style="display:flex; gap:6px;">
             <select id="sal_${dateKey}" onchange="updateSalaryData('${dateKey}')" style="flex:2;">
@@ -1303,12 +1331,11 @@ function renderSalaryPage() {
             <input type="number" id="custom_sal_${dateKey}" placeholder="自訂金額" value="${sVal}" oninput="updateSalaryCustom('${dateKey}')" style="flex:1;" />
           </div>
         </td>
-        <td>
-          <input type="number" id="bon_${dateKey}" value="${bVal}" placeholder="0" oninput="updateSalaryData('${dateKey}')" style="width:100%;" />
-        </td>
       </tr>
     `;
   }
+
+  let totalIncome = totalSalarySum + Number(currentMonthBonus || 0);
 
   tableContainer.innerHTML = `
     <div class="table-responsive">
@@ -1316,8 +1343,7 @@ function renderSalaryPage() {
         <thead>
           <tr style="background:#f2f2f2">
             <th>日期</th>
-            <th>薪水 (可下拉選擇或手動輸入)</th>
-            <th>獎金</th>
+            <th>薪水金額 (可下拉選擇或手動輸入)</th>
           </tr>
         </thead>
         <tbody>
@@ -1326,8 +1352,9 @@ function renderSalaryPage() {
         <tfoot>
           <tr style="background:#fafafa; font-weight:bold; font-size:15px;">
             <td style="text-align:right; padding-right:12px;">${currentSalaryMonth}月份總計：</td>
-            <td style="color:#173b63;">薪水總額：${money(totalSalarySum)}</td>
-            <td style="color:#e87522;">獎金總額：${money(totalBonusSum)} (總收入: ${money(totalSalarySum + totalBonusSum)})</td>
+            <td style="color:#173b63;">
+              薪水總額：${money(totalSalarySum)} ＋ 月獎金：${money(currentMonthBonus)} ＝ <b>總收入：${money(totalIncome)}</b>
+            </td>
           </tr>
         </tfoot>
       </table>
@@ -1345,20 +1372,48 @@ function changeSalaryMonth(m) {
   renderSalaryPage();
 }
 
+function addNewSalaryOption() {
+  let inputEl = document.getElementById('newSalaryOptionInput');
+  let val = parseFloat(inputEl.value);
+  if (!val || val <= 0) {
+    alert('請輸入有效的金額數字！');
+    return;
+  }
+  if (!db.salaryAmounts) db.salaryAmounts = [];
+  if (!db.salaryAmounts.includes(val)) {
+    db.salaryAmounts.push(val);
+    db.salaryAmounts.sort((a, b) => a - b);
+    save();
+    inputEl.value = '';
+    renderSalaryPage();
+    alert(`已成功新增常用金額選項：$${val}`);
+  } else {
+    alert('此金額選項已經存在囉！');
+  }
+}
+
+function updateMonthBonus() {
+  let inputEl = document.getElementById('monthBonusInput');
+  let val = parseFloat(inputEl.value) || 0;
+  let monthBonusKey = `${currentSalaryYear}-${currentSalaryMonth}`;
+  if (!db.monthBonuses) db.monthBonuses = {};
+  db.monthBonuses[monthBonusKey] = val;
+  save();
+  renderSalaryPage();
+}
+
 function updateSalaryData(dateKey) {
   let selectEl = document.getElementById(`sal_${dateKey}`);
   let customEl = document.getElementById(`custom_sal_${dateKey}`);
-  let bonusEl = document.getElementById(`bon_${dateKey}`);
 
   let salaryVal = customEl.value ? parseFloat(customEl.value) || 0 : (parseFloat(selectEl.value) || 0);
-  let bonusVal = parseFloat(bonusEl.value) || 0;
 
   if (!db.salaryRecords) db.salaryRecords = {};
-  db.salaryRecords[dateKey] = { salary: salaryVal, bonus: bonusVal };
+  db.salaryRecords[dateKey] = { salary: salaryVal };
 
   if (salaryVal > 0 && !db.salaryAmounts.includes(salaryVal)) {
     db.salaryAmounts.push(salaryVal);
-    db.salaryAmounts.sort((a,b)=>a-b);
+    db.salaryAmounts.sort((a, b) => a - b);
   }
 
   save();
