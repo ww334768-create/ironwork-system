@@ -101,7 +101,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 <body>
 <header>
   <h1>🏗️ 郭子郭工作管理系統</h1>
-  <p>工程、估價單, 支出、工資與損益一站管理 (☁️ 雲端同步版)</p>
+  <p>工程、估價單、支出、工資與損益一站管理 (☁️ 雲端同步版)</p>
 </header>
 
 <nav id="nav">
@@ -212,7 +212,6 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
       <datalist id="itemHistoryList"></datalist>
       <datalist id="specHistoryList"></datalist>
-      <datalist id="salaryHistoryList"></datalist>
 
       <div class="no-print" style="margin-top:10px;margin-bottom:15px">
         <button class="secondary" onclick="addQuoteRow()">＋ 新增品項欄位</button>
@@ -223,8 +222,8 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div class="quote-terms">
             <div>1. 本估價單有效期間 <input id="qValidDays" type="number" value="7" style="width:40px;text-align:center"> 天。</div>
             <div>2. 如蒙惠顧請先付訂金 <input id="qDepositPercent" type="number" value="3" style="width:40px;text-align:center"> 成。</div>
-            <div>3. 收款方式：簽約請付三分之一訂金, 現場入料施工三分之一, 完工後驗收收尾款（鋼骨工程內, 不含全部工程完工）。</div>
-            <div>4. 依估價單項目為主, 如有增加另計。</div>
+            <div>3. 收款方式：簽約請付三分之一訂金，現場入料施工三分之一，完工後驗收收尾款（鋼骨工程內，不含全部工程完工）。</div>
+            <div>4. 依估價單項目為主，如有增加另計。</div>
           </div>
           <div class="quote-agent">
             <div>經手人：<input id="qAgent" placeholder="請輸入姓名/電話" style="border-bottom:1px solid #000;border-radius:0;width:130px"></div>
@@ -467,7 +466,7 @@ const today = todayDateObj.toISOString().split('T')[0];
 
 let currentQuoteId = null;
 let currentSalaryYear = todayDateObj.getFullYear();
-let currentSalaryMonth = todayDateObj.getMonth() + 1; // 1-12
+let currentSalaryMonth = todayDateObj.getMonth() + 1;
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [], expenses: [], wages: [], payments: [], quotesList: [], salaryRecords: {}, salaryAmounts: [],
@@ -492,7 +491,7 @@ function sortByDateDesc(arr) {
 
 async function loadCloudData() {
   const statusEl = document.getElementById('syncText');
-  statusEl.textContent = '☁️ 雲端同步中, 正在讀取最新資料...';
+  statusEl.textContent = '☁️ 雲端同步中，正在讀取最新資料...';
   try {
     const res = await fetch(API_URL);
     const cloudData = await res.json();
@@ -519,7 +518,7 @@ async function loadCloudData() {
     }
     statusEl.textContent = '✅ 已連接雲端資料庫。';
   } catch (err) {
-    statusEl.textContent = '⚠️ 雲端連線失敗, 目前顯示離線暫存資料。';
+    statusEl.textContent = '⚠️ 雲端連線失敗，目前顯示離線暫存資料。';
   }
 }
 
@@ -549,7 +548,7 @@ async function save() {
     });
     statusEl.textContent = '✅ 異動已成功同步至雲端！';
   } catch (err) {
-    statusEl.textContent = '⚠️ 雲端同步失敗, 已存於本機。';
+    statusEl.textContent = '⚠️ 雲端同步失敗，已存於本機。';
   }
 }
 
@@ -837,7 +836,7 @@ function convertToProject() {
   let totalAmount = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
   
   if (totalAmount === 0) {
-    let manualCheck = prompt('目前估價單總金額為 0, 請確認總金額：', '0');
+    let manualCheck = prompt('目前估價單總金額為 0，請確認總金額：', '0');
     if (manualCheck !== null) totalAmount = parseFloat(manualCheck) || 0;
   }
 
@@ -1225,21 +1224,17 @@ function renderPayments() {
     `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>收款金額</th><th>折扣金額</th><th>備註</th><th>操作</th></tr>${sorted.map(x => `<tr><td>${x.date}</td><td>${esc(proj(x.projectId)?.name || '未指定')}</td><td><b>${money(x.amount)}</b></td><td><span style="color:#e87522">${money(x.discount || 0)}</span></td><td class="wrap-col">${esc(x.note || '-')}</td><td><button class="danger" onclick="del('payments',${x.id})">刪除</button></td></tr>`).join('')}</table></div>` : '<div class="empty">尚無收款紀錄</div>';
 }
 
-/* 台灣國定假日對照表 (固定假日 + 簡易農曆節日/彈性放假推算或常態國定假日) */
 function isTaiwanHoliday(year, month, day) {
   let dStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-  // 固定國定假日
   const fixedHolidays = [
-    `${year}-01-01`, // 開國紀念日
-    `${year}-02-28`, // 和平紀念日
-    `${year}-04-04`, // 兒童節
-    `${year}-05-01`, // 勞動節
-    `${year}-10-10`  // 國慶日
+    `${year}-01-01`,
+    `${year}-02-28`,
+    `${year}-04-04`,
+    `${year}-05-01`,
+    `${year}-10-10`
   ];
   if (fixedHolidays.includes(dStr)) return true;
 
-  // 簡易年度特定重要民俗節日 (以2026年為例或常見約略，可依需求擴充)
-  // 2026 年清明節 4/5, 端午節 6/19, 中秋節 9/25 等
   const dynamicHolidays = {
     2026: ['2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20', '2026-04-05', '2026-06-19', '2026-09-25', '2026-09-26']
   };
@@ -1249,14 +1244,12 @@ function isTaiwanHoliday(year, month, day) {
 }
 
 function renderSalaryPage() {
-  // 年份下拉
   let yearSelect = document.getElementById('salaryYearSelect');
   if (yearSelect) {
     let years = [todayDateObj.getFullYear()-1, todayDateObj.getFullYear(), todayDateObj.getFullYear()+1, todayDateObj.getFullYear()+2];
     yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === currentSalaryYear ? 'selected' : ''}>${y} 年</option>`).join('');
   }
 
-  // 月份按鈕列
   let monthContainer = document.getElementById('salaryMonthButtons');
   if (monthContainer) {
     let mHtml = '';
@@ -1267,7 +1260,6 @@ function renderSalaryPage() {
     monthContainer.innerHTML = mHtml;
   }
 
-  // 渲染該月份天數表格
   let tableContainer = document.getElementById('salaryTableContainer');
   if (!tableContainer) return;
 
@@ -1277,7 +1269,6 @@ function renderSalaryPage() {
   let totalSalarySum = 0;
   let totalBonusSum = 0;
 
-  // 下拉記憶選項列表
   let salaryOptionsHtml = '<option value="">-- 選擇或自訂 --</option>' + (db.salaryAmounts || []).map(amt => `<option value="${amt}">${amt}</option>`).join('');
 
   let rowsHtml = '';
@@ -1364,7 +1355,6 @@ function updateSalaryData(dateKey) {
   if (!db.salaryRecords) db.salaryRecords = {};
   db.salaryRecords[dateKey] = { salary: salaryVal, bonus: bonusVal };
 
-  // 記憶常用薪水金額至下拉選項
   if (salaryVal > 0 && !db.salaryAmounts.includes(salaryVal)) {
     db.salaryAmounts.push(salaryVal);
     db.salaryAmounts.sort((a,b)=>a-b);
@@ -1401,7 +1391,7 @@ document.getElementById('projectForm').onsubmit = e => {
   
   let duplicate = db.projects.find(p => p.name.trim() === newName && p.id != editId);
   if (duplicate) {
-    alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程, 客戶／工程名稱不可重複！請修改名稱後再試。`);
+    alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程，客戶／工程名稱不可重複！請修改名稱後再試。`);
     return;
   }
   
@@ -1461,12 +1451,12 @@ document.getElementById('paymentForm').onsubmit = e => {
 
   let maxAllowed = p.amount - currentTotalPaid;
   if (maxAllowed <= 0) {
-    alert('⚠️ 防呆警示：此工程已經全數收滿（無剩餘未收款）, 無法再新增收款！');
+    alert('⚠️ 防呆警示：此工程已經全數收滿（無剩餘未收款），無法再新增收款！');
     return;
   }
 
   if ((payAmt + discAmt) > maxAllowed) {
-    alert(`⚠️ 申報金額加折扣（$${payAmt + discAmt}）超過了此工程目前的未收款餘額（$${maxAllowed}）, 請重新確認金額與折扣！`);
+    alert(`⚠️ 申報金額加折扣（$${payAmt + discAmt}）超過了此工程目前的未收款餘額（$${maxAllowed}），請重新確認金額與折扣！`);
     return;
   }
 
