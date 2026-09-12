@@ -398,9 +398,11 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div style="display:flex; gap:8px; margin-top:5px;">
             <input type="number" id="monthBonusInput" placeholder="輸入當月獎金金額" oninput="updateMonthBonus()" style="flex:1;" />
           </div>
-          <div style="font-weight:bold; color:red; margin-top:5px; font-size:13px;">⭐️為自己的工作</div>
         </div>
       </div>
+
+      <!-- ⭐️為自己工作 提示標籤移至灰色框框下面那一排空白處 -->
+      <div style="font-weight:bold; color:red; font-size:14px; margin-bottom:10px;">⭐️為自己的工作</div>
 
       <!-- 該月份薪水紀錄表格 -->
       <div id="salaryTableContainer"></div>
@@ -412,7 +414,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 <div class="modal" id="importModal">
   <div class="modalbox" style="max-width:750px;">
     <h2>📋 貼上 Google 試算表內容匯入</h2>
-    <p class="small" style="color:#4b5563; margin-bottom:10px;">請在下方方塊中直接按下 Ctrl + V 貼上您從 Google 試算表複製的估價單範圍：</p>
+    <p class="small" style="color:#4b5563; margin-bottom:10px;">請在下方方態中直接按下 Ctrl + V 貼上您從 Google 試算表複製的估價單範圍：</p>
     <textarea id="pasteTextArea" rows="8" placeholder="在此處點擊並貼上 (Ctrl+V)..." style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; margin-bottom:15px; font-family:monospace;"></textarea>
     <div class="actions" style="justify-content:flex-end;">
       <button class="secondary" onclick="document.getElementById('importModal').classList.remove('show')">取消</button>
@@ -1377,13 +1379,9 @@ function renderSalaryPage() {
       `;
     }
 
-    // ⭐ 點選星星時在日期上方顯示紅色粗體備註，未點選時使用透明佔位保留空間以防格子跳動
-    let specialHeaderHtml = record.selfWork ? `<div style="font-size:13px; color:red; font-weight:bold; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px;">⭐為自己的工作</div>` : `<div style="font-size:13px; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px; visibility:hidden;">&nbsp;</div>`;
-
     rowsHtml += `
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
         <td style="width: 350px;">
-          ${specialHeaderHtml}
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="display: inline-flex; align-items: center;">
               <input type="checkbox" id="self_${dateKey}" ${isSelfWork} onchange="updateSalaryData('${dateKey}')" style="width:16px; height:16px; cursor:pointer;" />
