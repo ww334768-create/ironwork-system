@@ -401,7 +401,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         </div>
       </div>
 
-      <!-- ⭐️為自己工作 提示標籤移至灰色框框下面那一排空白處 -->
+      <!-- ⭐️為自己工作 提示標籤 -->
       <div style="font-weight:bold; color:red; font-size:14px; margin-bottom:10px;">⭐️為自己的工作</div>
 
       <!-- 該月份薪水紀錄表格 -->
@@ -1304,7 +1304,6 @@ function renderSalaryPage() {
   if (!tableContainer) return;
 
   let daysInMonth = new Date(currentSalaryYear, currentSalaryMonth, 0).getDate();
-  let weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
   let totalSalarySum = 0;
   if (!db.salaryAmounts || db.salaryAmounts.length === 0) {
@@ -1346,7 +1345,8 @@ function renderSalaryPage() {
     let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
 
     let salaryCellContent = '';
-    let needsEditing = isEditing || sVal === '' || sVal === null || sVal === undefined;
+    // 當未勾選休假與星星，且未鎖定顯示已儲存金額時，顯示下拉選單
+    let needsEditing = isEditing || ((sVal === '' || sVal === null || sVal === undefined) && !record.off && !record.selfWork);
 
     if (needsEditing) {
       let optionsHtml = `<option value="" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>請選擇金額</option>`;
@@ -1503,7 +1503,8 @@ function updateSalaryData(dateKey) {
   if (!db.salaryRecords) db.salaryRecords = {};
   let existing = db.salaryRecords[dateKey] || { salary: '' };
   
-  let salaryVal = (isOff || isSelfWork) ? 0 : existing.salary;
+  // 點掉星星與休假時（即皆未勾選），將金額重置為空字串，以自動顯示金額下拉選單
+  let salaryVal = (isOff || isSelfWork) ? 0 : (existing.salary === 0 ? '' : existing.salary);
 
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
 
@@ -1646,43 +1647,16 @@ document.getElementById('wageForm').onsubmit = e => {
     date: wDate.value 
   });
   if (personName && !db.historyPersons.includes(personName)) db.historyPersons.push(personName);
-  e.target.reset(); wBonus.value = 0; save();
+  e.target.reset(); wBonus.value = 0;
 };
 
 document.getElementById('paymentForm').onsubmit = e => {
   e.preventDefault();
-  let pId = +payProject.value;
-  let payAmt = +payAmount.value;
-  let discAmt = +payDiscount.value || 0;
-  let currentTotalPaid = totalReceivedAndDiscount(pId);
-  let p = proj(pId);
-  
-  if (!p) { alert('請選擇有效的工程！'); return; }
-
-  let maxAllowed = p.amount - currentTotalPaid;
-  if (maxAllowed <= 0) {
-    alert('⚠️ 防呆警示：此工程已經全數收滿（無剩餘未收款），無法再新增收款！');
-    return;
-  }
-
-  if ((payAmt + discAmt) > maxAllowed) {
-    alert(`⚠️ 申報金額加折扣（$${payAmt + discAmt}）超過了此工程目前的未收款餘額（$${maxAllowed}），請重新確認金額與折扣！`);
-    return;
-  }
-
-  db.payments.push({ id: uid(), projectId: pId, amount: payAmt, discount: discAmt, date: payDate.value, note: payNote.value });
-  
-  if (totalReceivedAndDiscount(pId) >= p.amount) {
-    p.status = '已收款完成';
-  }
-
+  db.payments.push({ id: uid(), projectId: +payProject.value, amount: +payAmount.value, discount: +payDiscount.value || 0, date: payDate.value, note: payNote.value });
   e.target.reset(); payDiscount.value = 0; save();
-  alert('收款紀錄新增成功！');
 };
 
-document.getElementById('pDate').value = today;
-
-render(); renderQuote(); renderQuoteHistory(); renderSalaryPage(); loadCloudData();
+loadCloudData();
 </script>
 </body>
 </html>
