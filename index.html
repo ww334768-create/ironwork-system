@@ -56,6 +56,9 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .toggle-icon { display:inline-block; width:20px; transition:transform 0.2s; }
 .group-open .toggle-icon { transform:rotate(90deg); }
 
+/* 薪水紀錄表點擊星星後的淺藍色整行樣式 */
+.salary-row-highlight { background-color: #e0f2fe !important; }
+
 .quote-paper{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);max-width:850px;margin:auto}
 .quote-header{text-align:center;border-bottom:2px solid #173b63;padding-bottom:8px;margin-bottom:12px}
 .quote-header h2{margin:0;font-size:24px;color:#173b63}
@@ -1313,17 +1316,19 @@ function renderSalaryPage() {
     let isOff = record.off ? 'checked' : '';
     let isSelfWork = record.selfWork ? 'checked' : '';
 
-    if (!record.off) {
-      totalSalarySum += Number(sVal || 0);
-    }
+    let effectiveSalary = (record.off || record.selfWork) ? 0 : Number(sVal || 0);
+    totalSalarySum += effectiveSalary;
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : '';
     if (record.selfWork) {
       colorStyle = 'color: #000080; font-weight: bold;';
     }
 
+    // 依據是否勾選星星決定整行是否套用淺藍色背景
+    let rowHighlightClass = record.selfWork ? 'salary-row-highlight' : '';
+
     rowsHtml += `
-      <tr>
+      <tr id="row_${dateKey}" class="${rowHighlightClass}">
         <td style="width: 320px; ${colorStyle}">
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="border: 2px solid #e87522; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; background: #fffaf5;">
@@ -1338,8 +1343,8 @@ function renderSalaryPage() {
         <td>
           <select id="sal_${dateKey}" onchange="updateSalaryData('${dateKey}')">
             <option value="">請選擇金額</option>
-            <option value="3000" ${String(sVal) === '3000' ? 'selected' : ''}>3000</option>
-            <option value="2700" ${String(sVal) === '2700' ? 'selected' : ''}>2700</option>
+            <option value="3000" ${String(sVal) === '3000' && !record.off && !record.selfWork ? 'selected' : ''}>3000</option>
+            <option value="2700" ${String(sVal) === '2700' && !record.off && !record.selfWork ? 'selected' : ''}>2700</option>
           </select>
         </td>
       </tr>
@@ -1349,13 +1354,13 @@ function renderSalaryPage() {
   let totalIncome = totalSalarySum + Number(currentMonthBonus || 0);
 
   tableContainer.innerHTML = `
-    <div style="color: red; font-weight: bold; margin-bottom: 8px; font-size: 14px;">⭐代表自己的工作</div>
+    <div style="color: red; font-weight: bold; margin-bottom: 8px; font-size: 14px;">⭐代表自己的工作（薪水自動變為 $0，且整行底色變為淺藍色）</div>
     <div class="table-responsive">
       <table>
         <thead>
           <tr style="background:#f2f2f2">
             <th>日期 (週次與休假勾選)</th>
-            <th>薪水金額 (下拉選擇)</th>
+            <th>薪水金額 (休假或勾選星星會自動變成 $0)</th>
           </tr>
         </thead>
         <tbody>
@@ -1422,11 +1427,11 @@ function updateSalaryData(dateKey) {
   let isOff = offEl ? offEl.checked : false;
   let isSelfWork = selfEl ? selfEl.checked : false;
   
-  if (isOff) {
-    selectEl.value = '0';
+  if (isOff || isSelfWork) {
+    selectEl.value = '';
   }
 
-  let salaryVal = isOff ? 0 : (parseFloat(selectEl.value) || 0);
+  let salaryVal = (isOff || isSelfWork) ? 0 : (parseFloat(selectEl.value) || 0);
 
   if (!db.salaryRecords) db.salaryRecords = {};
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
