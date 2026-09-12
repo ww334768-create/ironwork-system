@@ -1318,7 +1318,13 @@ function renderSalaryPage() {
     let isOff = record.off ? 'checked' : '';
     let isSelfWork = record.selfWork ? 'checked' : '';
 
-    let effectiveSalary = (record.off || record.selfWork) ? 0 : Number(sVal || 0);
+    // 計算當天薪資：若未手動選擇金額、或勾選休假、或勾選星星，則為 0
+    let effectiveSalary = 0;
+    if (record.off || record.selfWork) {
+      effectiveSalary = 0;
+    } else if (sVal !== '' && sVal !== null && sVal !== undefined) {
+      effectiveSalary = Number(sVal) || 0;
+    }
     totalSalarySum += effectiveSalary;
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : '';
@@ -1344,7 +1350,7 @@ function renderSalaryPage() {
         </td>
         <td>
           <select id="sal_${dateKey}" class="salary-amount-text" onchange="updateSalaryData('${dateKey}')">
-            <option value="" style="color:#1f2937; font-weight:normal;">$0 (請選擇金額)</option>
+            <option value="" style="color:#1f2937; font-weight:normal;" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>$0 (請選擇金額)</option>
             <option value="3000" ${String(sVal) === '3000' && !record.off && !record.selfWork ? 'selected' : ''}>$3,000</option>
             <option value="2700" ${String(sVal) === '2700' && !record.off && !record.selfWork ? 'selected' : ''}>$2,700</option>
           </select>
@@ -1434,7 +1440,7 @@ function updateSalaryData(dateKey) {
     selectEl.value = "";
   }
 
-  let salaryVal = (isOff || isSelfWork) ? 0 : (parseFloat(selectEl.value) || 0);
+  let salaryVal = (isOff || isSelfWork) ? 0 : selectEl.value;
 
   if (!db.salaryRecords) db.salaryRecords = {};
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
