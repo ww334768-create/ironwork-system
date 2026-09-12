@@ -1302,7 +1302,9 @@ function renderSalaryPage() {
   let weekDays = ['日', '一', '二', '三', '四', '五', '六'];
 
   let totalSalarySum = 0;
-  db.salaryAmounts = [3000, 2700];
+  if (!db.salaryAmounts || db.salaryAmounts.length === 0) {
+    db.salaryAmounts = [3000, 2700];
+  }
 
   let rowsHtml = '';
   for (let d = 1; d <= daysInMonth; d++) {
@@ -1328,23 +1330,29 @@ function renderSalaryPage() {
     }
     totalSalarySum += effectiveSalary;
 
-    let colorStyle = isRed ? 'color: red; font-weight: bold;' : '';
+    let colorStyle = isRed ? 'color: red; font-weight: bold;' : 'color: #333;';
     if (record.selfWork) {
-      colorStyle = 'color: #000080; font-weight: bold;';
+      colorStyle = 'color: #173b63; font-weight: bold;';
     }
 
     let rowHighlightClass = record.selfWork ? 'salary-row-highlight' : '';
     let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
 
-    // 金額欄位顯示邏輯：編輯模式顯示下拉選單，固定模式顯示橘色固定字串與編輯按鈕
+    // 金額欄位顯示邏輯：還沒輸入金額或編輯模式時顯示下拉選單，儲存後顯示固定金額與編輯按鈕
     let salaryCellContent = '';
-    if (isEditing) {
+    let needsEditing = isEditing || sVal === '' || sVal === null || sVal === undefined;
+
+    if (needsEditing) {
+      let optionsHtml = `<option value="" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>請選擇金額</option>`;
+      db.salaryAmounts.forEach(amt => {
+        let sel = (String(sVal) === String(amt) && !record.off && !record.selfWork) ? 'selected' : '';
+        optionsHtml += `<option value="${amt}" ${sel}>$${Number(amt).toLocaleString()}</option>`;
+      });
+
       salaryCellContent = `
         <div style="display:flex; align-items:center; gap:8px;">
           <select id="sal_${dateKey}" style="flex:1;">
-            <option value="" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>請選擇金額</option>
-            <option value="3000" ${String(sVal) === '3000' && !record.off && !record.selfWork ? 'selected' : ''}>$3,000</option>
-            <option value="2700" ${String(sVal) === '2700' && !record.off && !record.selfWork ? 'selected' : ''}>$2,700</option>
+            ${optionsHtml}
           </select>
           <button class="primary" style="padding:6px 12px; font-size:13px;" onclick="saveSalaryRow('${dateKey}')">儲存</button>
         </div>
@@ -1353,10 +1361,8 @@ function renderSalaryPage() {
       let displayAmountText = '';
       if (record.off || record.selfWork) {
         displayAmountText = '$0';
-      } else if (sVal !== '' && sVal !== null && sVal !== undefined) {
-        displayAmountText = '$' + Number(sVal).toLocaleString();
       } else {
-        displayAmountText = '請選擇金額';
+        displayAmountText = '$' + Number(sVal).toLocaleString();
       }
 
       salaryCellContent = `
@@ -1369,7 +1375,7 @@ function renderSalaryPage() {
 
     rowsHtml += `
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
-        <td style="width: 330px; ${colorStyle}">
+        <td style="width: 350px; ${colorStyle}">
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="border: 2px solid #e87522; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; background: #fffaf5;">
               <input type="checkbox" id="self_${dateKey}" ${isSelfWork} onchange="updateSalaryData('${dateKey}')" style="width:16px; height:16px; cursor:pointer;" title="代表自己的工作" />
@@ -1396,7 +1402,7 @@ function renderSalaryPage() {
         <thead>
           <tr style="background:#f2f2f2">
             <th>日期 (週次與休假勾選)</th>
-            <th>薪水金額 (橘色固定字體，點擊編輯按鈕可修改)</th>
+            <th>薪水金額 (請選擇金額下拉選單，儲存後顯示橘色固定字體)</th>
           </tr>
         </thead>
         <tbody>
