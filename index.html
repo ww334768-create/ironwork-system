@@ -398,6 +398,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <div style="display:flex; gap:8px; margin-top:5px;">
             <input type="number" id="monthBonusInput" placeholder="輸入當月獎金金額" oninput="updateMonthBonus()" style="flex:1;" />
           </div>
+          <div style="font-weight:bold; color:red; margin-top:5px; font-size:13px;">⭐️為自己的工作</div>
         </div>
       </div>
 
@@ -1376,8 +1377,8 @@ function renderSalaryPage() {
       `;
     }
 
-    // ⭐ 移到日期上方白色空白處並改為紅色粗體（僅在勾選星星時計算出現）
-    let specialHeaderHtml = record.selfWork ? `<div style="font-size:13px; color:red; font-weight:bold; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px;">⭐ 為自己的工作</div>` : `<div style="font-size:13px; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px; visibility:hidden;">&nbsp;</div>`;
+    // ⭐ 點選星星時在日期上方顯示紅色粗體備註，未點選時使用透明佔位保留空間以防格子跳動
+    let specialHeaderHtml = record.selfWork ? `<div style="font-size:13px; color:red; font-weight:bold; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px;">⭐為自己的工作</div>` : `<div style="font-size:13px; line-height:1.2; margin-bottom:3px; background:white; padding:2px 4px; visibility:hidden;">&nbsp;</div>`;
 
     rowsHtml += `
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
