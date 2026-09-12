@@ -58,6 +58,8 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
 /* 薪水紀錄表點擊星星後的淺藍色整行樣式 */
 .salary-row-highlight { background-color: #e0f2fe !important; }
+/* 薪水紀錄表點擊休假後的淺粉紅色整行樣式 */
+.salary-row-off { background-color: #fce7f3 !important; }
 /* 薪水金額數字固定顯示為橘色 */
 .salary-amount-fixed { color: #e87522; font-weight: bold; font-size: 15px; }
 
@@ -1330,7 +1332,15 @@ function renderSalaryPage() {
     totalSalarySum += effectiveSalary;
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : 'color: #333;';
-    let rowHighlightClass = record.selfWork ? 'salary-row-highlight' : '';
+    
+    // 依據勾選狀態決定整行背景顏色
+    let rowHighlightClass = '';
+    if (record.selfWork) {
+      rowHighlightClass = 'salary-row-highlight';
+    } else if (record.off) {
+      rowHighlightClass = 'salary-row-off';
+    }
+
     let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
 
     let salaryCellContent = '';
@@ -1367,10 +1377,13 @@ function renderSalaryPage() {
       `;
     }
 
+    // 只有當該筆紀錄有勾選「⭐ 為自己的工作」時，才在日期上面顯示紅字標題
+    let specialHeaderHtml = record.selfWork ? `<div style="font-size:11px; color:#dc2626; font-weight:bold; line-height:1.2; margin-bottom:2px;">⭐ 為自己的工作</div>` : '';
+
     rowsHtml += `
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
         <td style="width: 350px; ${colorStyle}">
-          <div style="font-size:11px; color:#dc2626; line-height:1.2; margin-bottom:2px;">⭐ 為自己的工作</div>
+          ${specialHeaderHtml}
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="display: inline-flex; align-items: center;">
               <input type="checkbox" id="self_${dateKey}" ${isSelfWork} onchange="updateSalaryData('${dateKey}')" style="width:16px; height:16px; cursor:pointer;" />
