@@ -1331,9 +1331,6 @@ function renderSalaryPage() {
     totalSalarySum += effectiveSalary;
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : 'color: #333;';
-    if (record.selfWork) {
-      colorStyle = 'color: #173b63; font-weight: bold;';
-    }
 
     let rowHighlightClass = record.selfWork ? 'salary-row-highlight' : '';
     let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
@@ -1377,13 +1374,15 @@ function renderSalaryPage() {
       <tr id="row_${dateKey}" class="${rowHighlightClass}">
         <td style="width: 350px; ${colorStyle}">
           <div style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="off_${dateKey}" ${isOff} onchange="updateSalaryData('${dateKey}')" style="width:18px; height:18px; cursor:pointer;" title="休假打勾" />
+            <label for="off_${dateKey}" style="margin:0; font-weight:normal; cursor:pointer; font-size:12px; color:#6b7280;">休假</label>
+            
+            <span>${currentSalaryYear}年${currentSalaryMonth}月${d}日 (週${weekDays[dayOfWeek]})</span>
+
             <div style="border: 2px solid #e87522; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; background: #fffaf5;">
               <input type="checkbox" id="self_${dateKey}" ${isSelfWork} onchange="updateSalaryData('${dateKey}')" style="width:16px; height:16px; cursor:pointer;" title="代表自己的工作" />
               <label for="self_${dateKey}" style="margin:0; font-weight:bold; cursor:pointer; font-size:13px; color:#e87522;">⭐</label>
             </div>
-            <span>${currentSalaryYear}年${currentSalaryMonth}月${d}日 (週${weekDays[dayOfWeek]})</span>
-            <input type="checkbox" id="off_${dateKey}" ${isOff} onchange="updateSalaryData('${dateKey}')" style="width:18px; height:18px; cursor:pointer;" title="休假打勾" />
-            <label for="off_${dateKey}" style="margin:0; font-weight:normal; cursor:pointer; font-size:12px; color:#6b7280;">休假</label>
           </div>
         </td>
         <td>
@@ -1401,7 +1400,7 @@ function renderSalaryPage() {
       <table>
         <thead>
           <tr style="background:#f2f2f2">
-            <th>日期 (週次與休假勾選)</th>
+            <th>日期 (休假、週次與⭐星星)</th>
             <th>薪水金額 (請選擇金額下拉選單，儲存後顯示橘色固定字體)</th>
           </tr>
         </thead>
