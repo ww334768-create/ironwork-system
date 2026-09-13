@@ -565,7 +565,7 @@ async function loadCloudData() {
   }
 }
 
-// 防抖 (Debounce) 雲端同步機制
+// 🚀 優化後的防抖 (Debounce) 雲端同步與儲存機制
 function save(immediately = false) {
   localStorage.setItem(KEY, JSON.stringify(db));
   const statusEl = document.getElementById('syncText');
@@ -577,7 +577,7 @@ function save(immediately = false) {
     if (syncTimer) clearTimeout(syncTimer);
     syncTimer = setTimeout(() => {
       syncToCloudNow();
-    }, 1500);
+    }, 1500); // 1.5秒內無連續修改即自動背景同步
   }
 }
 
