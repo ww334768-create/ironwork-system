@@ -1557,7 +1557,7 @@ function saveSalaryRow(dateKey) {
   // 局部更新顯示
   let cell = document.getElementById(`cell_sal_${dateKey}`);
   if (cell) {
-    let displayAmountText = (isOff || isSelfWork) ? '$0' : ('$' + Number(salaryVal).toLocaleString());
+    let displayAmountText = (isOff || isSelfWork) ? '$0' : (salaryVal !== '' ? ('$' + Number(salaryVal).toLocaleString()) : '$0');
     cell.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
         <span class="salary-amount-fixed">${displayAmountText}</span>
@@ -1568,7 +1568,7 @@ function saveSalaryRow(dateKey) {
   recalcSalaryTotal();
 }
 
-// 【優化】直接更新單行 DOM Class，不再整個表格 rebuild，極速順暢
+// 【優化】直接更新單行 DOM 與控制項，取消點選休假/星星時即刻回復下拉格，並防止變慢
 function updateSalaryData(dateKey) {
   let offEl = document.getElementById(`off_${dateKey}`);
   let selfEl = document.getElementById(`self_${dateKey}`);
@@ -1579,12 +1579,12 @@ function updateSalaryData(dateKey) {
   if (!db.salaryRecords) db.salaryRecords = {};
   let existing = db.salaryRecords[dateKey] || { salary: '' };
   
-  let salaryVal = (isOff || isSelfWork) ? 0 : (existing.salary === 0 ? '' : existing.salary);
+  let salaryVal = (isOff || isSelfWork) ? 0 : existing.salary;
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
 
   save();
 
-  // 局部切換整行 Class
+  // 1. 局部切換整行背景 Class
   let row = document.getElementById(`row_${dateKey}`);
   if (row) {
     row.className = '';
@@ -1595,17 +1595,37 @@ function updateSalaryData(dateKey) {
     }
   }
 
-  // 局部更新金額顯示
+  // 2. 局部更新右側金額視窗（勾選時顯著為$0；取消勾選時回復為下拉選單）
   let cell = document.getElementById(`cell_sal_${dateKey}`);
-  let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
-  if (cell && !isEditing) {
-    let displayAmountText = (isOff || isSelfWork) ? '$0' : (salaryVal !== '' ? '$' + Number(salaryVal).toLocaleString() : '$0');
-    cell.innerHTML = `
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <span class="salary-amount-fixed">${displayAmountText}</span>
-        <button class="secondary" style="padding:5px 10px; font-size:12px;" onclick="editSalaryRow('${dateKey}')">編輯</button>
-      </div>
-    `;
+  if (cell) {
+    if (isOff || isSelfWork) {
+      // 勾選 休假 / ⭐ 時，固定顯示 $0
+      db.salaryEditingState[dateKey] = false;
+      cell.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <span class="salary-amount-fixed">$0</span>
+          <button class="secondary" style="padding:5px 10px; font-size:12px;" onclick="editSalaryRow('${dateKey}')">編輯</button>
+        </div>
+      `;
+    } else {
+      // 取消點選 休假 / ⭐ 時，同步還原成可選擇與儲存的下拉格
+      db.salaryEditingState[dateKey] = true;
+      let sVal = existing.salary;
+      let optionsHtml = `<option value="" ${sVal === '' || sVal === undefined || sVal === null || sVal === 0 ? 'selected' : ''}>請選擇金額</option>`;
+      db.salaryAmounts.forEach(amt => {
+        let sel = (String(sVal) === String(amt)) ? 'selected' : '';
+        optionsHtml += `<option value="${amt}" ${sel}>$${Number(amt).toLocaleString()}</option>`;
+      });
+
+      cell.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <select id="sal_${dateKey}" style="flex:1;">
+            ${optionsHtml}
+          </select>
+          <button class="primary" style="padding:6px 12px; font-size:13px;" onclick="saveSalaryRow('${dateKey}')">儲存</button>
+        </div>
+      `;
+    }
   }
 
   recalcSalaryTotal();
