@@ -495,6 +495,7 @@ const today = todayDateObj.toISOString().split('T')[0];
 let currentQuoteId = null;
 let currentSalaryYear = todayDateObj.getFullYear();
 let currentSalaryMonth = todayDateObj.getMonth() + 1;
+let syncTimer = null; // 防抖定時器
 
 let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [], expenses: [], wages: [], payments: [], quotesList: [], salaryRecords: {}, salaryAmounts: [3000, 2700], monthBonuses: {},
@@ -555,9 +556,23 @@ async function loadCloudData() {
   }
 }
 
-async function save() {
+// 【優化】採用 Debounce (防抖) 雲端同步機制
+function save(immediately = false) {
   localStorage.setItem(KEY, JSON.stringify(db));
-  render(); renderQuoteHistory(); renderSalaryPage();
+  const statusEl = document.getElementById('syncText');
+  
+  if (immediately) {
+    syncToCloudNow();
+  } else {
+    statusEl.textContent = '💾 已暫存本機 (等待同步雲端...)';
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      syncToCloudNow();
+    }, 1500); // 停止打字/點擊 1.5 秒後才統一發送雲端
+  }
+}
+
+async function syncToCloudNow() {
   const statusEl = document.getElementById('syncText');
   statusEl.textContent = '⏳ 正在同步至雲端...';
   try {
@@ -795,7 +810,8 @@ function saveCurrentQuote() {
     db.quotesList.push(qData);
   }
 
-  save();
+  save(true);
+  renderQuoteHistory();
   document.getElementById('currentQuoteStatus').textContent = `📄 目前編輯：${qData.name || '未命名估價單'}`;
   alert('估價單已成功儲存至歷史紀錄！');
 }
@@ -836,7 +852,8 @@ function deleteQuote(id) {
   if (confirm('確定要刪除這筆估價單紀錄嗎？')) {
     db.quotesList = db.quotesList.filter(x => x.id !== id);
     if (currentQuoteId === id) resetNewQuote();
-    save();
+    save(true);
+    renderQuoteHistory();
   }
 }
 
@@ -882,7 +899,8 @@ function convertToProject() {
   let date = db.activeQuote.date || today;
 
   db.projects.push({ id: uid(), date: date, address: address, name: name, amount: totalAmount, status: '進行中' });
-  save();
+  save(true);
+  renderProjects();
   alert('已成功新增為工程單！');
   document.querySelector('button[data-page="projects"]').click();
 }
@@ -1165,6 +1183,7 @@ function saveEditedExpense() {
 
   document.getElementById('expenseEditModal').classList.remove('show');
   save();
+  renderExpenses();
   alert('支出紀錄已成功更新！');
 }
 
@@ -1252,6 +1271,7 @@ function saveEditedWage() {
 
   document.getElementById('wageEditModal').classList.remove('show');
   save();
+  renderWages();
   alert('工資紀錄已成功更新！');
 }
 
@@ -1367,12 +1387,7 @@ function renderSalaryPage() {
         </div>
       `;
     } else {
-      let displayAmountText = '';
-      if (record.off || record.selfWork) {
-        displayAmountText = '$0';
-      } else {
-        displayAmountText = '$' + Number(sVal).toLocaleString();
-      }
+      let displayAmountText = (record.off || record.selfWork) ? '$0' : ('$' + Number(sVal).toLocaleString());
 
       salaryCellContent = `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
@@ -1397,7 +1412,7 @@ function renderSalaryPage() {
             <span style="${colorStyle}">${currentSalaryYear}年${currentSalaryMonth}月${d}日</span>
           </div>
         </td>
-        <td>
+        <td id="cell_sal_${dateKey}">
           ${salaryCellContent}
         </td>
       </tr>
@@ -1421,7 +1436,7 @@ function renderSalaryPage() {
         <tfoot>
           <tr style="background:#fafafa; font-weight:bold; font-size:15px;">
             <td style="text-align:right; padding-right:12px;">${currentSalaryMonth}月份總計：</td>
-            <td style="color:#173b63;">
+            <td style="color:#173b63;" id="salaryTotalFooter">
               薪水總額：${money(totalSalarySum)} ＋ 月獎金：${money(currentMonthBonus)} ＝ <b style="color:#e87522;">總收入：${money(totalIncome)}</b>
             </td>
           </tr>
@@ -1429,6 +1444,30 @@ function renderSalaryPage() {
       </table>
     </div>
   `;
+}
+
+// 【優化】局部計算當月份薪水總額，避免重新渲染整個表格
+function recalcSalaryTotal() {
+  let daysInMonth = new Date(currentSalaryYear, currentSalaryMonth, 0).getDate();
+  let totalSalarySum = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    let dateKey = `${currentSalaryYear}-${String(currentSalaryMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '', off: false, selfWork: false };
+
+    if (!record.off && !record.selfWork && record.salary !== '' && record.salary !== null && record.salary !== undefined) {
+      totalSalarySum += Number(record.salary) || 0;
+    }
+  }
+
+  let monthBonusKey = `${currentSalaryYear}-${currentSalaryMonth}`;
+  let currentMonthBonus = (db.monthBonuses && db.monthBonuses[monthBonusKey]) !== undefined ? db.monthBonuses[monthBonusKey] : 0;
+  let totalIncome = totalSalarySum + Number(currentMonthBonus || 0);
+
+  let footerTd = document.getElementById('salaryTotalFooter');
+  if (footerTd) {
+    footerTd.innerHTML = `薪水總額：${money(totalSalarySum)} ＋ 月獎金：${money(currentMonthBonus)} ＝ <b style="color:#e87522;">總收入：${money(totalIncome)}</b>`;
+  }
 }
 
 function changeSalaryYear() {
@@ -1468,18 +1507,39 @@ function updateMonthBonus() {
   if (!db.monthBonuses) db.monthBonuses = {};
   db.monthBonuses[monthBonusKey] = val;
   save();
-  renderSalaryPage();
+  recalcSalaryTotal();
 }
 
 function editSalaryRow(dateKey) {
   if (!db.salaryEditingState) db.salaryEditingState = {};
   db.salaryEditingState[dateKey] = true;
-  renderSalaryPage();
+  
+  // 局部替換編輯控制項，不重繪整頁
+  let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '', off: false, selfWork: false };
+  let sVal = record.salary;
+  let cell = document.getElementById(`cell_sal_${dateKey}`);
+  
+  if (cell) {
+    let optionsHtml = `<option value="" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>請選擇金額</option>`;
+    db.salaryAmounts.forEach(amt => {
+      let sel = (String(sVal) === String(amt) && !record.off && !record.selfWork) ? 'selected' : '';
+      optionsHtml += `<option value="${amt}" ${sel}>$${Number(amt).toLocaleString()}</option>`;
+    });
+
+    cell.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px;">
+        <select id="sal_${dateKey}" style="flex:1;">
+          ${optionsHtml}
+        </select>
+        <button class="primary" style="padding:6px 12px; font-size:13px;" onclick="saveSalaryRow('${dateKey}')">儲存</button>
+      </div>
+    `;
+  }
 }
 
 function saveSalaryRow(dateKey) {
   let selectEl = document.getElementById(`sal_${dateKey}`);
-  let offEl = document.getElementById(`off_${dateKey}`);
+  let offEl = document.getElementById(`self_${dateKey}`) ? document.getElementById(`off_${dateKey}`) : null;
   let selfEl = document.getElementById(`self_${dateKey}`);
 
   let isOff = offEl ? offEl.checked : false;
@@ -1493,9 +1553,22 @@ function saveSalaryRow(dateKey) {
   db.salaryEditingState[dateKey] = false;
 
   save();
-  renderSalaryPage();
+  
+  // 局部更新顯示
+  let cell = document.getElementById(`cell_sal_${dateKey}`);
+  if (cell) {
+    let displayAmountText = (isOff || isSelfWork) ? '$0' : ('$' + Number(salaryVal).toLocaleString());
+    cell.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <span class="salary-amount-fixed">${displayAmountText}</span>
+        <button class="secondary" style="padding:5px 10px; font-size:12px;" onclick="editSalaryRow('${dateKey}')">編輯</button>
+      </div>
+    `;
+  }
+  recalcSalaryTotal();
 }
 
+// 【優化】直接更新單行 DOM Class，不再整個表格 rebuild，極速順暢
 function updateSalaryData(dateKey) {
   let offEl = document.getElementById(`off_${dateKey}`);
   let selfEl = document.getElementById(`self_${dateKey}`);
@@ -1507,11 +1580,35 @@ function updateSalaryData(dateKey) {
   let existing = db.salaryRecords[dateKey] || { salary: '' };
   
   let salaryVal = (isOff || isSelfWork) ? 0 : (existing.salary === 0 ? '' : existing.salary);
-
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
 
   save();
-  renderSalaryPage();
+
+  // 局部切換整行 Class
+  let row = document.getElementById(`row_${dateKey}`);
+  if (row) {
+    row.className = '';
+    if (isSelfWork) {
+      row.className = 'salary-row-highlight';
+    } else if (isOff) {
+      row.className = 'salary-row-off';
+    }
+  }
+
+  // 局部更新金額顯示
+  let cell = document.getElementById(`cell_sal_${dateKey}`);
+  let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
+  if (cell && !isEditing) {
+    let displayAmountText = (isOff || isSelfWork) ? '$0' : (salaryVal !== '' ? '$' + Number(salaryVal).toLocaleString() : '$0');
+    cell.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <span class="salary-amount-fixed">${displayAmountText}</span>
+        <button class="secondary" style="padding:5px 10px; font-size:12px;" onclick="editSalaryRow('${dateKey}')">編輯</button>
+      </div>
+    `;
+  }
+
+  recalcSalaryTotal();
 }
 
 function uid() { return Date.now() + Math.random().toString().slice(2,6); }
@@ -1519,7 +1616,8 @@ function del(type, n) {
   if (confirm('確定要刪除這筆紀錄嗎？')) {
     db[type] = db[type].filter(x => x.id != n);
     if (type === 'projects' && document.getElementById('editingProjectId').value == n) resetProjectForm();
-    save();
+    save(true);
+    render();
   }
 }
 
@@ -1527,8 +1625,9 @@ function addCategory() {
   let x = prompt('請輸入新的支出項目名稱：');
   if (x && x.trim()) {
     if (!db.categories.includes(x.trim())) db.categories.push(x.trim());
-    save();
+    save(true);
     document.getElementById('eCategory').value = x.trim();
+    renderSelects();
   }
 }
 
@@ -1537,8 +1636,9 @@ function addPerson() {
   if (x && x.trim()) {
     if (!db.historyPersons) db.historyPersons = [];
     if (!db.historyPersons.includes(x.trim())) db.historyPersons.push(x.trim());
-    save();
+    save(true);
     document.getElementById('wPerson').value = x.trim();
+    renderSelects();
   }
 }
 
@@ -1575,7 +1675,7 @@ function importData(ev) {
   r.onload = () => {
     try {
       const x = JSON.parse(r.result);
-      if (confirm('確定要使用此備份檔覆蓋目前的資料嗎？')) { db = x; save(); alert('資料還原成功！'); }
+      if (confirm('確定要使用此備份檔覆蓋目前的資料嗎？')) { db = x; save(true); render(); alert('資料還原成功！'); }
     } catch (e) { alert('備份檔格式不正確！'); }
   };
   r.readAsText(f);
@@ -1588,6 +1688,11 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   b.classList.add('active');
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   document.getElementById(b.dataset.page).classList.add('active');
+  // 切換頁面時自動觸發一次同步
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncToCloudNow();
+  }
 });
 
 document.getElementById('eProject').onchange = (e) => { updateSubFormDates(e.target.value); };
@@ -1627,14 +1732,19 @@ document.getElementById('projectForm').onsubmit = e => {
     }
   }
   resetProjectForm();
-  save();
+  save(true);
+  renderProjects();
+  renderDashboard();
   alert('工程資料儲存成功！');
 };
 
 document.getElementById('expenseForm').onsubmit = e => {
   e.preventDefault();
   db.expenses.push({ id: uid(), projectId: +eProject.value, category: eCategory.value, amount: +eAmount.value, date: eDate.value, note: eNote.value });
-  e.target.reset(); save();
+  e.target.reset(); 
+  save(true);
+  renderExpenses();
+  renderDashboard();
 };
 
 document.getElementById('wageForm').onsubmit = e => {
@@ -1648,13 +1758,19 @@ document.getElementById('wageForm').onsubmit = e => {
     bonus: +wBonus.value || 0, 
     date: wDate.value 
   });
-  e.target.reset(); save();
+  e.target.reset(); 
+  save(true);
+  renderWages();
+  renderDashboard();
 };
 
 document.getElementById('paymentForm').onsubmit = e => {
   e.preventDefault();
   db.payments.push({ id: uid(), projectId: +payProject.value, amount: +payAmount.value, discount: +payDiscount.value || 0, date: payDate.value, note: payNote.value });
-  e.target.reset(); save();
+  e.target.reset(); 
+  save(true);
+  renderPayments();
+  renderDashboard();
 };
 
 window.onload = () => {
