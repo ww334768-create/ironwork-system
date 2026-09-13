@@ -66,7 +66,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-paper{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);max-width:850px;margin:auto}
 .quote-header{text-align:center;border-bottom:2px solid #173b63;padding-bottom:8px;margin-bottom:12px}
 .quote-header h2{margin:0;font-size:24px;color:#173b63}
-.quote-meta{display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.quote-meta{display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:nowrap;gap:8px}
 .quote-table{width:100%;border-collapse:collapse;margin-bottom:0;table-layout:fixed}
 .quote-table th,.quote-table td{border:1px solid #333;padding:4px 2px;text-align:center;font-size:14px;word-break:break-word;height:32px;white-space:normal}
 .quote-table input{border:none;background:transparent;padding:2px;text-align:center;width:100%;font-size:14px;height:100%}
@@ -74,7 +74,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-footer-box{border:1px solid #333;border-top:none;padding:8px 12px;font-size:13px;line-height:1.5}
 .quote-footer-row{display:flex;justify-content:space-between;align-items:flex-start}
 .quote-terms{flex:3}
-.quote-agent{flex:1;text-align:left;padding-left:15px}
+.quote-agent{flex:1.2;text-align:left;padding-left:15px;display:flex;flex-direction:column;gap:6px}
 .quote-summary-table{width:100%;border-collapse:collapse;margin-top:6px}
 .quote-summary-table td{border:1px solid #333;padding:6px;font-size:13px;white-space:normal;vertical-align:middle;}
 
@@ -173,17 +173,17 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
       </div>
       
       <div class="quote-meta">
-        <div style="flex:1;min-width:160px;">
+        <div style="flex:1;min-width:130px;">
           <label>日期：</label>
-          <input id="qDate" type="date" style="width:140px">
+          <input id="qDate" type="date" style="width:100%">
         </div>
-        <div style="flex:2;min-width:200px;">
+        <div style="flex:2.5;min-width:180px;">
           <label>地點 / 地址：</label>
           <input id="qAddress" placeholder="例如：南園街127巷59號">
         </div>
-        <div style="flex:2;min-width:200px;">
+        <div style="flex:1.2;min-width:130px;">
           <label>工程名稱／客戶：</label>
-          <input id="qName" placeholder="例如：屋頂修繕工程（可先空白）">
+          <input id="qName" placeholder="屋頂修繕/客戶">
         </div>
       </div>
 
@@ -233,7 +233,8 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
             <div>4. 依估價單項目為主，如有增加另計。</div>
           </div>
           <div class="quote-agent">
-            <div>經手人：<input id="qAgent" placeholder="請輸入姓名/電話" style="border-bottom:1px solid #000;border-radius:0;width:130px"></div>
+            <div style="display:flex;align-items:center;">經手人：<input id="qAgent" placeholder="請輸入姓名" style="border-bottom:1px solid #000;border-radius:0;flex:1;min-width:0;"></div>
+            <div style="display:flex;align-items:center;">電　話：<input id="qPhone" placeholder="請輸入電話" style="border-bottom:1px solid #000;border-radius:0;flex:1;min-width:0;"></div>
           </div>
         </div>
       </div>
@@ -499,7 +500,7 @@ let db = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   projects: [], expenses: [], wages: [], payments: [], quotesList: [], salaryRecords: {}, salaryAmounts: [3000, 2700], monthBonuses: {},
   categories: ['料錢', '吊車', '餐費', '油錢', '五金', '外包', 'other', 'other', 'other'],
   historyItems: [], historySpecs: [], historyPersons: [],
-  activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 }
+  activeQuote: { date: today, address: '', name: '', items: [], note: '', agent: '', phone: '', validDays: 7, depositPercent: 3 }
 };
 
 if (!db.salaryRecords) db.salaryRecords = {};
@@ -680,6 +681,7 @@ function processPastedData() {
     name: '', 
     note: note,
     agent: '',
+    phone: '',
     validDays: 7,
     depositPercent: 3,
     items: items.length > 0 ? items : [{ name: '', spec: '', qty: '', unit: '', price: '', total: 0 }]
@@ -692,7 +694,7 @@ function processPastedData() {
 
 function renderQuote() {
   if (!db.activeQuote) {
-    db.activeQuote = { date: today, address: '', name: '', items: [], note: '', agent: '', validDays: 7, depositPercent: 3 };
+    db.activeQuote = { date: today, address: '', name: '', items: [], note: '', agent: '', phone: '', validDays: 7, depositPercent: 3 };
   }
   let q = db.activeQuote;
 
@@ -700,6 +702,7 @@ function renderQuote() {
   document.getElementById('qAddress').value = q.address || '';
   document.getElementById('qName').value = q.name || '';
   document.getElementById('qAgent').value = q.agent || '';
+  document.getElementById('qPhone').value = q.phone || '';
   document.getElementById('qNote').value = q.note || '';
   document.getElementById('qValidDays').value = q.validDays || 7;
   document.getElementById('qDepositPercent').value = q.depositPercent || 3;
@@ -802,6 +805,7 @@ function syncCurrentQuoteFromForm() {
   db.activeQuote.address = document.getElementById('qAddress').value;
   db.activeQuote.name = document.getElementById('qName').value;
   db.activeQuote.agent = document.getElementById('qAgent').value;
+  db.activeQuote.phone = document.getElementById('qPhone').value;
   db.activeQuote.note = document.getElementById('qNote').value;
   db.activeQuote.validDays = document.getElementById('qValidDays').value;
   db.activeQuote.depositPercent = document.getElementById('qDepositPercent').value;
@@ -810,7 +814,7 @@ function syncCurrentQuoteFromForm() {
 function resetNewQuote() {
   currentQuoteId = null;
   db.activeQuote = {
-    date: today, address: '', name: '', note: '', agent: '', validDays: 7, depositPercent: 3,
+    date: today, address: '', name: '', note: '', agent: '', phone: '', validDays: 7, depositPercent: 3,
     items: [{ name: '', spec: '', qty: '', unit: '', price: '', total: 0 }]
   };
   document.getElementById('currentQuoteStatus').textContent = '📄 目前編輯：新估價單';
@@ -1345,7 +1349,6 @@ function renderSalaryPage() {
     let isEditing = db.salaryEditingState && db.salaryEditingState[dateKey];
 
     let salaryCellContent = '';
-    // 當未勾選休假與星星，且未鎖定顯示已儲存金額時，顯示下拉選單
     let needsEditing = isEditing || ((sVal === '' || sVal === null || sVal === undefined) && !record.off && !record.selfWork);
 
     if (needsEditing) {
@@ -1503,7 +1506,6 @@ function updateSalaryData(dateKey) {
   if (!db.salaryRecords) db.salaryRecords = {};
   let existing = db.salaryRecords[dateKey] || { salary: '' };
   
-  // 點掉星星與休假時（即皆未勾選），將金額重置為空字串，以自動顯示金額下拉選單
   let salaryVal = (isOff || isSelfWork) ? 0 : (existing.salary === 0 ? '' : existing.salary);
 
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
@@ -1646,17 +1648,19 @@ document.getElementById('wageForm').onsubmit = e => {
     bonus: +wBonus.value || 0, 
     date: wDate.value 
   });
-  if (personName && !db.historyPersons.includes(personName)) db.historyPersons.push(personName);
-  e.target.reset(); wBonus.value = 0;
+  e.target.reset(); save();
 };
 
 document.getElementById('paymentForm').onsubmit = e => {
   e.preventDefault();
   db.payments.push({ id: uid(), projectId: +payProject.value, amount: +payAmount.value, discount: +payDiscount.value || 0, date: payDate.value, note: payNote.value });
-  e.target.reset(); payDiscount.value = 0; save();
+  e.target.reset(); save();
 };
 
-loadCloudData();
+window.onload = () => {
+  render();
+  loadCloudData();
+};
 </script>
 </body>
 </html>
