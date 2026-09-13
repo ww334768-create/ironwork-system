@@ -80,12 +80,106 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-summary-table{width:100%;border-collapse:collapse;margin-top:12px}
 .quote-summary-table td{border:1px solid #d1d5db;padding:8px;font-size:14px;white-space:normal;vertical-align:middle;}
 
+/* ---------------------------------------------------- */
+/* 手機版估價單表格優化（防止欄位嚴重擠壓） */
+/* ---------------------------------------------------- */
+@media screen and (max-width: 768px) {
+  .quote-paper { padding: 12px; }
+  
+  /* 表格轉為卡片風格 */
+  .quote-table thead { display: none; } /* 隱藏傳統表頭 */
+  
+  .quote-table, .quote-table tbody, .quote-table tr, .quote-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .quote-table tr {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .quote-table td {
+    border: none !important;
+    border-bottom: 1px dashed #eee !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    text-align: right;
+    height: auto;
+  }
+
+  .quote-table td:last-child {
+    border-bottom: none !important;
+  }
+
+  /* 動態加入標籤 */
+  .quote-table td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: #173b63;
+    font-size: 13px;
+    text-align: left;
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  .quote-table td input {
+    border: 1px solid #d1d5db !important;
+    background: #fafafa !important;
+    text-align: right;
+    padding: 6px 8px;
+    max-width: 65%;
+  }
+
+  /* 總計與備註特殊排版 */
+  .quote-table tfoot, .quote-table tfoot tr, .quote-table tfoot td {
+    display: block;
+    width: 100%;
+  }
+  
+  .quote-table tfoot tr {
+    background: #fdfdfd;
+    border: 1px solid #173b63;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+  }
+
+  .quote-table tfoot td {
+    display: flex;
+    justify-content: space-between;
+    border: none !important;
+    padding: 4px 0;
+  }
+
+  .quote-summary-table td {
+    display: block;
+    width: 100% !important;
+  }
+}
+
 @media print {
   @page { size: A4 portrait; margin: 0; }
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
   body { background: white; -webkit-print-color-adjust: exact; }
   .quote-paper { box-shadow: none; padding: 15px; margin: 0; width: 100%; max-width: 100%; page-break-inside: avoid; border-radius: 0; }
+  
+  .quote-table thead { display: table-header-group !important; }
+  .quote-table, .quote-table tbody, .quote-table tr, .quote-table td, .quote-table tfoot, .quote-table tfoot tr, .quote-table tfoot td {
+    display: table-cell !important;
+    width: auto !important;
+  }
+  .quote-table tr { display: table-row !important; border: none !important; box-shadow: none !important; margin: 0 !important; }
+  .quote-table td::before { display: none !important; }
+  .quote-table input { border: none !important; background: transparent !important; text-align: center !important; }
+
   .quote-table th, .quote-table td, .quote-footer-box, .quote-summary-table td { border-color: #333 !important; }
   .quote-footer-box { background: transparent !important; }
   .page { display: block !important; }
@@ -208,16 +302,16 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
           <tbody id="quoteItems"></tbody>
           <tfoot>
             <tr style="background:#fafafa;font-weight:bold;">
-              <td colspan="6" style="text-align:right;padding-right:12px;">總計</td>
-              <td id="tableTotalCell" style="font-size:15px;color:#173b63;">$0</td>
-              <td class="no-print"></td>
+              <td colspan="6" style="text-align:right;padding-right:12px;" data-label="摘要">總計</td>
+              <td id="tableTotalCell" style="font-size:15px;color:#173b63;" data-label="總金額">$0</td>
+              <td class="no-print" data-label="操作"></td>
             </tr>
             <tr>
-              <td colspan="2" style="font-weight:bold;background:#fafafa">備註說明</td>
-              <td colspan="5">
+              <td colspan="2" style="font-weight:bold;background:#fafafa" data-label="項目">備註說明</td>
+              <td colspan="5" data-label="內容">
                 <input id="qNote" placeholder="例如：項目包含石棉瓦裝太空包 不含清運" style="text-align:left;padding-left:8px;">
               </td>
-              <td class="no-print"></td>
+              <td class="no-print" data-label="操作"></td>
             </tr>
           </tfoot>
         </table>
@@ -756,14 +850,14 @@ function renderQuote() {
 
     let tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td><input list="itemHistoryList" value="${esc(item.name || '')}" onchange="updateQuoteItem(${idx}, 'name', this.value)"></td>
-      <td><input list="specHistoryList" value="${esc(item.spec || '')}" onchange="updateQuoteItem(${idx}, 'spec', this.value)"></td>
-      <td><input type="number" step="any" value="${item.qty || ''}" onchange="updateQuoteItem(${idx}, 'qty', this.value)"></td>
-      <td><input value="${esc(item.unit || '')}" onchange="updateQuoteItem(${idx}, 'unit', this.value)"></td>
-      <td><input type="number" value="${item.price || ''}" onchange="updateQuoteItem(${idx}, 'price', this.value)"></td>
-      <td id="rowTotal_${idx}" style="font-weight:bold">${item.total ? '$' + Number(item.total).toLocaleString() : ''}</td>
-      <td class="no-print">${isRealItem ? `<button class="danger" onclick="removeQuoteRow(${idx})">刪</button>` : ''}</td>
+      <td data-label="項">${idx + 1}</td>
+      <td data-label="工程項目"><input list="itemHistoryList" value="${esc(item.name || '')}" onchange="updateQuoteItem(${idx}, 'name', this.value)"></td>
+      <td data-label="規格"><input list="specHistoryList" value="${esc(item.spec || '')}" onchange="updateQuoteItem(${idx}, 'spec', this.value)"></td>
+      <td data-label="數量"><input type="number" step="any" value="${item.qty || ''}" onchange="updateQuoteItem(${idx}, 'qty', this.value)"></td>
+      <td data-label="單位"><input value="${esc(item.unit || '')}" onchange="updateQuoteItem(${idx}, 'unit', this.value)"></td>
+      <td data-label="單價"><input type="number" value="${item.price || ''}" onchange="updateQuoteItem(${idx}, 'price', this.value)"></td>
+      <td data-label="金額" id="rowTotal_${idx}" style="font-weight:bold">${item.total ? '$' + Number(item.total).toLocaleString() : ''}</td>
+      <td data-label="操作" class="no-print">${isRealItem ? `<button class="danger" onclick="removeQuoteRow(${idx})">刪</button>` : ''}</td>
     `;
     tbody.appendChild(tr);
   }
