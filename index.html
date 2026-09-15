@@ -585,26 +585,31 @@ async function syncToCloudNow() {
   const statusEl = document.getElementById('syncText');
   statusEl.textContent = '⏳ 正在同步至雲端...';
   try {
-    await fetch(API_URL, { 
-      method: "POST", 
-      body: JSON.stringify({ 
-        content: JSON.stringify({
-          projects: db.projects,
-          expenses: db.expenses,
-          wages: db.wages,
-          payments: db.payments,
-          quotesList: db.quotesList,
-          salaryRecords: db.salaryRecords,
-          monthBonuses: db.monthBonuses,
-          salaryAmounts: db.salaryAmounts,
-          categories: db.categories,
-          historyItems: db.historyItems,
-          historySpecs: db.historySpecs,
-          historyPersons: db.historyPersons
-        }) 
-      }) 
-    });
-    statusEl.textContent = '✅ 異動已成功同步至雲端！';
+const res = await fetch(API_URL, {
+  method: "POST",
+  body: JSON.stringify({
+    content: JSON.stringify({
+      projects: db.projects,
+      expenses: db.expenses,
+      wages: db.wages,
+      payments: db.payments,
+      quotesList: db.quotesList,
+      salaryRecords: db.salaryRecords,
+      monthBonuses: db.monthBonuses,
+      salaryAmounts: db.salaryAmounts,
+      categories: db.categories,
+      historyItems: db.historyItems,
+      historySpecs: db.historySpecs,
+      historyPersons: db.historyPersons
+    })
+  })
+});
+
+if (!res.ok) {
+  throw new Error(`HTTP ${res.status}`);
+}
+
+statusEl.textContent = '✅ 異動已成功同步至雲端！';
   } catch (err) {
     statusEl.textContent = '⚠️ 雲端同步失敗，已存於本機。';
   }
