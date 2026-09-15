@@ -1786,12 +1786,49 @@ document.getElementById('wageForm').onsubmit = e => {
 
 document.getElementById('paymentForm').onsubmit = e => {
   e.preventDefault();
-  db.payments.push({ id: uid(), projectId: +payProject.value, amount: +payAmount.value, discount: +payDiscount.value || 0, date: payDate.value, note: payNote.value });
-  e.target.reset(); 
+
+  const projectId = +payProject.value;
+  const paymentAmount = +payAmount.value || 0;
+  const discountAmount = +payDiscount.value || 0;
+
+  // 新增收款紀錄
+  db.payments.push({
+    id: uid(),
+    projectId: projectId,
+    amount: paymentAmount,
+    discount: discountAmount,
+    date: payDate.value,
+    note: payNote.value
+  });
+
+  // 找到對應工程
+  const project = db.projects.find(p => p.id == projectId);
+
+  if (project) {
+    // 計算這筆收款加入後，總共已收多少
+    const totalPaid = totalReceivedAndDiscount(projectId);
+
+    // 如果已收款金額 >= 工程總金額
+    // 自動將工程狀態改成「已收款完成」
+    if (totalPaid >= Number(project.amount || 0)) {
+      project.status = '已收款完成';
+    }
+  }
+
+  e.target.reset();
+
   save(true);
-  renderPayments();
-  renderDashboard();
+
+  // 重新整理所有畫面
+  render();
+
+  alert(
+    project && project.status === '已收款完成'
+      ? '收款紀錄已新增！\n此工程款項已全部收清，工程狀態已自動改為「已收款完成」。'
+      : '收款紀錄已成功新增！'
+  );
 };
+
 
 window.onload = () => {
   render();
