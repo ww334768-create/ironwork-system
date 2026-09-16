@@ -658,14 +658,10 @@ function processPastedData() {
       parsedDate = `${y}-${m}-${d}`;
     }
 
-    // 地址，例如：地點：樹林街一段207號
-    let addrMatch = rowStr.match(/(?:地點|地址)\s*[：:]?\s*(.+)$/);
+    // 地址：只抓明確標示「地點：」或「地址：」的內容，避免把工程資料誤判成地址
+    let addrMatch = rowStr.match(/(?:地點|地址)\s*[：:]\s*(.+)$/);
     if (addrMatch) {
       address = addrMatch[1].trim();
-    } else if (!address) {
-      // 沒有「地點／地址」文字時，也嘗試抓常見地址格式
-      let addrCell = lines[i].find(cell => /(?:縣|市).*(?:區|鄉|鎮).*(?:路|街|巷|弄)|(?:路|街).*(?:段|巷|弄)/.test(cell));
-      if (addrCell) address = addrCell.trim();
     }
 
     if (/^(?:備註|說明)\s*[：:]/.test(rowStr) || rowStr.includes('項目包含') || rowStr.includes('不含')) {
