@@ -411,6 +411,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         </div>
       </div>
 
+      <div style="font-weight:bold;color:red;font-size:14px;margin-bottom:10px;">⭐️為自己的工作</div>
       <div id="salaryTableContainer"></div>
     </div>
   </section>
@@ -637,77 +638,125 @@ function processPastedData() {
   }
   document.getElementById('importModal').classList.remove('show');
 
-  let lines = rawData.split('\n').map(l => l.split('\t').map(c => c.trim()));
+  // Google 試算表複製內容：保留空白欄位，避免欄位位置因合併儲存格而錯位
+  let lines = rawData.replace(/\r/g, '').split('\n').map(l => l.split('\t').map(c => c.trim()));
   let parsedDate = today;
   let address = '';
   let items = [];
   let note = '';
 
+  // 1. 日期與地址：不依賴固定欄位位置
   for (let i = 0; i < lines.length; i++) {
-    let r = lines[i].filter(c => c !== ''); 
-    let rowStr = r.join(' ');
+    let rowStr = lines[i].filter(c => c !== '').join(' ');
 
-    if (rowStr.includes('民國') || (rowStr.includes('年') && rowStr.includes('月'))) {
-      let matchMinguo = rowStr.match(/(?:民國)?\s*(\d+)\s*年\s*(\d+)\s*月\s*(\d+)\s*日/);
-      if (matchMinguo) {
-        let y = parseInt(matchMinguo[1]) + 1911;
-        let m = matchMinguo[2].padStart(2, '0');
-        let d = matchMinguo[3].padStart(2, '0');
-        parsedDate = `${y}-${m}-${d}`;
-      }
+    // 民國日期，例如：中華民國 115 年 9 月 12 日
+    let matchMinguo = rowStr.match(/(?:中華民國|民國)?\s*(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    if (matchMinguo) {
+      let y = parseInt(matchMinguo[1], 10) + 1911;
+      let m = matchMinguo[2].padStart(2, '0');
+      let d = matchMinguo[3].padStart(2, '0');
+      parsedDate = `${y}-${m}-${d}`;
     }
 
-    if (rowStr.includes('地址') || rowStr.includes('地點') || rowStr.includes('園街') || rowStr.includes('路') || rowStr.includes('街') || rowStr.includes('市') || rowStr.includes('區')) {
-      let addrCell = r.find(cell => cell.includes('園街') || cell.includes('路') || cell.includes('市') || cell.includes('區') || cell.includes('巷') || cell.includes('街') || cell.includes('段'));
-      if (addrCell) {
-        address = addrCell.replace(/地點[：:]?|地址[：:]?/g, '').trim();
-      }
+    // 地址，例如：地點：樹林街一段207號
+    let addrMatch = rowStr.match(/(?:地點|地址)\s*[：:]?\s*(.+)$/);
+    if (addrMatch) {
+      address = addrMatch[1].trim();
+    } else if (!address) {
+      // 沒有「地點／地址」文字時，也嘗試抓常見地址格式
+      let addrCell = lines[i].find(cell => /(?:縣|市).*(?:區|鄉|鎮).*(?:路|街|巷|弄)|(?:路|街).*(?:段|巷|弄)/.test(cell));
+      if (addrCell) address = addrCell.trim();
     }
 
-    if (rowStr.includes('項目包含') || rowStr.includes('不含') || rowStr.includes('備註')) {
+    if (/^(?:備註|說明)\s*[：:]/.test(rowStr) || rowStr.includes('項目包含') || rowStr.includes('不含')) {
       note = rowStr.trim();
     }
+  }
 
-    if (r.length >= 4 && !rowStr.includes('工程項目') && !rowStr.includes('中華民國') && !rowStr.includes('地點')) {
-      let textCols = r.filter(c => isNaN(c) || c === '');
-      let numCols = r.filter(c => !isNaN(c) && c !== '');
+  // 2. 自動尋找「工程項目／規格／數量／單位／單價／金額」標題列
+  let headerIndex = -1;
+  let col = { name: -1, spec: -1, qty: -1, unit: -1, price: -1, total: -1, remark: -1 };
+  for (let i = 0; i < lines.length; i++) {
+    let row = lines[i].map(c => c.replace(/\s/g, ''));
+    let joined = row.join('|');
+    let hasName = row.some(c => ['工程項目', '工程項目名稱', '項目', '品名'].includes(c));
+    let hasQty = row.some(c => ['數量', '數目'].includes(c));
+    let hasPrice = row.some(c => ['單價', '價格'].includes(c));
+    if (hasName && hasQty && hasPrice) {
+      headerIndex = i;
+      const pick = (names) => row.findIndex(c => names.includes(c));
+      col.name = pick(['工程項目', '工程項目名稱', '項目', '品名']);
+      col.spec = pick(['規格', '尺寸', '說明']);
+      col.qty = pick(['數量', '數目']);
+      col.unit = pick(['單位']);
+      col.price = pick(['單價', '價格']);
+      col.total = pick(['金額', '小計', '總價']);
+      col.remark = pick(['備註', '備註說明']);
+      break;
+    }
+  }
 
-      if (textCols.length > 0 && numCols.length >= 2) {
-        let validCols = r.filter(c => c !== '' && !(/^(\d+)$/.test(c) && parseInt(c) < 100 && r.indexOf(c) === 0));
-        if (validCols.length >= 5) {
-          let itemName = validCols[0] || '';
-          let spec = validCols[1] || '';
-          let qty = parseFloat(String(validCols[2] || '').replace(/,/g, '')) || 0;
-          let unit = validCols[3] || '';
-          let price = parseFloat(String(validCols[4] || '').replace(/,/g, '')) || 0;
+  // 3. 依標題欄位解析每一筆，完全不依賴 A/B/C... 固定位置
+  if (headerIndex >= 0) {
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+      let row = lines[i];
+      let compact = row.map(c => c.replace(/\s/g, ''));
+      let rowText = row.filter(c => c !== '').join(' ');
 
-          if (itemName && price > 0) {
-            items.push({
-              name: itemName,
-              spec: spec,
-              qty: qty,
-              unit: unit,
-              price: price,
-              total: qty * price
-            });
-          }
-        }
+      // 遇到合計／總計後，後面通常不是品項
+      if (/^(合計|總計|工程總金額|小計)/.test(rowText) || rowText.includes('工程總金額')) continue;
+
+      let itemName = col.name >= 0 ? (row[col.name] || '') : '';
+      let spec = col.spec >= 0 ? (row[col.spec] || '') : '';
+      let qtyRaw = col.qty >= 0 ? (row[col.qty] || '') : '';
+      let unit = col.unit >= 0 ? (row[col.unit] || '') : '';
+      let priceRaw = col.price >= 0 ? (row[col.price] || '') : '';
+      let totalRaw = col.total >= 0 ? (row[col.total] || '') : '';
+
+      let qty = parseFloat(String(qtyRaw).replace(/[,，\s]/g, '')) || 0;
+      let price = parseFloat(String(priceRaw).replace(/[$,，\s]/g, '')) || 0;
+      let total = parseFloat(String(totalRaw).replace(/[$,，\s]/g, '')) || 0;
+
+      // 空白品項列直接略過；只要有工程項目就保留，即使單價暫時是 0
+      if (itemName && !['工程項目', '工程項目名稱', '項目', '品名'].includes(itemName)) {
+        if (total <= 0 && qty > 0 && price > 0) total = qty * price;
+        items.push({
+          name: itemName,
+          spec: spec,
+          qty: qty,
+          unit: unit,
+          price: price,
+          total: total
+        });
+
+        if (!note && col.remark >= 0 && row[col.remark]) note = row[col.remark];
       }
     }
   }
 
+  // 4. 若找不到標題列，再用「數字欄位＋文字欄位」作為備援解析
   if (items.length === 0) {
     for (let i = 0; i < lines.length; i++) {
       let r = lines[i].filter(c => c !== '');
-      if (r.length >= 5) {
-        let name = r[1] || r[0] || '';
-        let spec = r[2] || '';
-        let qty = parseFloat(String(r[3] || '').replace(/,/g, '')) || 1;
-        let unit = r[4] || '';
-        let price = parseFloat(String(r[5] || r[4] || '').replace(/,/g, '')) || 0;
-        if (name && price > 0 && !name.includes('工程項目')) {
-          items.push({ name: name, spec: spec, qty: qty, unit: unit, price: price, total: qty * price });
-        }
+      let rowStr = r.join(' ');
+      if (r.length < 5 || rowStr.includes('工程項目') || rowStr.includes('中華民國') || rowStr.includes('地點')) continue;
+
+      let numeric = r.map((c, idx) => ({ idx, value: parseFloat(String(c).replace(/[$,，\s]/g, '')) }))
+        .filter(x => !Number.isNaN(x.value));
+      if (numeric.length < 2) continue;
+
+      // 常見格式：編號、工程項目、規格、數量、單位、單價、金額、備註
+      let offset = /^\d+$/.test(r[0]) ? 1 : 0;
+      let itemName = r[offset] || '';
+      let spec = r[offset + 1] || '';
+      let qty = parseFloat(String(r[offset + 2] || '').replace(/[,，\s]/g, '')) || 0;
+      let unit = r[offset + 3] || '';
+      let price = parseFloat(String(r[offset + 4] || '').replace(/[$,，\s]/g, '')) || 0;
+      let total = parseFloat(String(r[offset + 5] || '').replace(/[$,，\s]/g, '')) || 0;
+
+      if (itemName && (price > 0 || total > 0)) {
+        if (total <= 0) total = qty * price;
+        items.push({ name: itemName, spec, qty, unit, price, total });
       }
     }
   }
@@ -715,7 +764,7 @@ function processPastedData() {
   db.activeQuote = {
     date: parsedDate,
     address: address || '未命名地址',
-    name: '', 
+    name: '',
     note: note,
     agent: '',
     phone: '',
@@ -725,9 +774,12 @@ function processPastedData() {
   };
 
   renderQuote();
-  document.getElementById('currentQuoteStatus').textContent = '📄 目前編輯：已成功透過貼上匯入';
-  alert(`成功匯入 ${items.length} 筆估價單品項！請檢查內容後點擊「儲存估價單數據」。`);
+  document.getElementById('currentQuoteStatus').textContent = items.length > 0 ? '📄 目前編輯：已成功透過貼上匯入' : '📄 目前編輯：匯入完成，但未辨識到品項';
+  alert(items.length > 0
+    ? `成功匯入 ${items.length} 筆估價單品項！請檢查內容後點擊「儲存估價單數據」。`
+    : '已讀取試算表內容，但沒有辨識到工程項目。請確認複製範圍包含「工程項目、規格、數量、單位、單價」標題列。');
 }
+
 
 function renderQuote() {
   if (!db.activeQuote) {
@@ -1473,7 +1525,7 @@ function renderSalaryPage() {
 
   let totalIncome = totalSalarySum + Number(currentMonthBonus || 0);
 
-  tableContainer.innerHTML = ` <div id="salaryTotalFooter" style="background:#fafafa; border:1px solid #d1d5db; border-radius:8px; padding:12px 15px; margin-bottom:12px; font-weight:bold; font-size:15px;"> ${currentSalaryMonth}月份總計： <span style="color:#173b63;"> 薪水總額：${money(totalSalarySum)} ＋ 月獎金：${money(currentMonthBonus)} </span> ＝ <span style="color:#e87522;"> 總收入：${money(totalIncome)} </span> </div><div style="font-size:13px;color:#6b7280;margin:6px 0 8px;">⭐ 為自己的工作</div> <div class="table-responsive">
+  tableContainer.innerHTML = ` <div id="salaryTotalFooter" style="background:#fafafa; border:1px solid #d1d5db; border-radius:8px; padding:12px 15px; margin-bottom:12px; font-weight:bold; font-size:15px;"> ${currentSalaryMonth}月份總計： <span style="color:#173b63;"> 薪水總額：${money(totalSalarySum)} ＋ 月獎金：${money(currentMonthBonus)} </span> ＝ <span style="color:#e87522;"> 總收入：${money(totalIncome)} </span> </div> <div class="table-responsive">
       <table>
         <thead>
           <tr style="background:#f2f2f2">
