@@ -696,53 +696,63 @@ function processPastedData() {
     }
   }
 
-  // 3. 依標題欄位解析每一筆，完全不依賴 A/B/C... 固定位置
+  // 3. 依資料內容型態自動對齊欄位
   if (headerIndex >= 0) {
     for (let i = headerIndex + 1; i < lines.length; i++) {
       let row = lines[i];
-      let compact = row.map(c => c.replace(/\s/g, ''));
-      let rowText = row.filter(c => c !== '').join(' ');
-
-      // 遇到合計／總計後，後面通常不是品項
+      let nonEmpty = row.map((v, idx) => ({v:String(v || '').trim(), idx})).filter(x => x.v !== '');
+      let rowText = nonEmpty.map(x => x.v).join(' ');
+      if (!nonEmpty.length) continue;
       if (/^(合計|總計|工程總金額|小計)/.test(rowText) || rowText.includes('工程總金額')) continue;
 
-      // Google 試算表的「工程項目」標題可能合併了「項次＋工程項目」兩格，
-      // 複製貼上後標題只會留下「工程項目」，但資料列會變成：1、工程項目、規格、數量、...
-      // 偵測第一欄是項次數字時，整組欄位向右對齊一格。
-      let columnShift = 0;
-      if (col.name >= 0) {
-        const firstCell = String(row[col.name] || '').replace(/[,，\s]/g, '');
-        const nextCell = String(row[col.name + 1] || '').trim();
-        if (/^\d+$/.test(firstCell) && nextCell && Number.isNaN(Number(nextCell))) {
-          columnShift = 1;
-        }
+      let pos = 0;
+      if (/^\d+$/.test(nonEmpty[0].v) && Number(nonEmpty[0].v) <= 999) pos = 1;
+      if (!nonEmpty[pos]) continue;
+
+      let itemName = nonEmpty[pos].v;
+      pos++;
+      let spec = '', qty = 0, unit = '', price = 0, total = 0, remark = '';
+
+      while (pos < nonEmpty.length) {
+        let v = nonEmpty[pos].v;
+        let num = parseFloat(v.replace(/[$,，\s]/g, ''));
+        if (!Number.isNaN(num)) break;
+        spec = v; pos++; break;
       }
 
-      const getCell = (idx) => idx >= 0 ? (row[idx + columnShift] || '') : '';
-      let itemName = getCell(col.name);
-      let spec = getCell(col.spec);
-      let qtyRaw = getCell(col.qty);
-      let unit = getCell(col.unit);
-      let priceRaw = getCell(col.price);
-      let totalRaw = getCell(col.total);
+      while (pos < nonEmpty.length) {
+        let v = nonEmpty[pos].v;
+        let num = parseFloat(v.replace(/[$,，\s]/g, ''));
+        if (!Number.isNaN(num)) { qty = num; pos++; break; }
+        pos++;
+      }
 
-      let qty = parseFloat(String(qtyRaw).replace(/[,，\s]/g, '')) || 0;
-      let price = parseFloat(String(priceRaw).replace(/[$,，\s]/g, '')) || 0;
-      let total = parseFloat(String(totalRaw).replace(/[$,，\s]/g, '')) || 0;
+      if (pos < nonEmpty.length) {
+        let v = nonEmpty[pos].v;
+        let num = parseFloat(v.replace(/[$,，\s]/g, ''));
+        if (Number.isNaN(num)) { unit = v; pos++; }
+      }
 
-      // 空白品項列直接略過；只要有工程項目就保留，即使單價暫時是 0
-      if (itemName && !['工程項目', '工程項目名稱', '項目', '品名'].includes(itemName)) {
+      while (pos < nonEmpty.length) {
+        let v = nonEmpty[pos].v;
+        let num = parseFloat(v.replace(/[$,，\s]/g, ''));
+        if (!Number.isNaN(num)) { price = num; pos++; break; }
+        pos++;
+      }
+
+      while (pos < nonEmpty.length) {
+        let v = nonEmpty[pos].v;
+        let num = parseFloat(v.replace(/[$,，\s]/g, ''));
+        if (!Number.isNaN(num)) { total = num; pos++; break; }
+        pos++;
+      }
+
+      if (pos < nonEmpty.length) remark = nonEmpty.slice(pos).map(x => x.v).join(' ');
+
+      if (itemName && !['工程項目','工程項目名稱','項目','品名'].includes(itemName) && (price > 0 || total > 0 || qty > 0)) {
         if (total <= 0 && qty > 0 && price > 0) total = qty * price;
-        items.push({
-          name: itemName,
-          spec: spec,
-          qty: qty,
-          unit: unit,
-          price: price,
-          total: total
-        });
-
-        if (!note && col.remark >= 0 && row[col.remark + columnShift]) note = row[col.remark + columnShift];
+        items.push({name:itemName,spec:spec,qty:qty,unit:unit,price:price,total:total});
+        if (!note && remark) note = remark;
       }
     }
   }
