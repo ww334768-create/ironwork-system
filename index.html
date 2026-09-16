@@ -102,6 +102,13 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   /* 操作欄列印時隱藏後，補回最後一個可見欄位（金額）的右框線 */
   .quote-table tr > *:nth-last-child(2) { border-right: 1px solid #333 !important; }
   .quote-table input { font-size: 10px !important; height: 19px !important; padding: 0 !important; }
+  /* 列印時隱藏操作欄，避免手機 A4 預覽超出右側 */
+  .quote-table th:last-child, .quote-table td:last-child { display:none !important; }
+  .quote-table { width:100% !important; min-width:0 !important; max-width:100% !important; table-layout:fixed !important; }
+  .quote-table th, .quote-table td { white-space:nowrap !important; overflow:hidden !important; }
+  /* 日期輸入框列印時隱藏日曆圖示 */
+  .quote-paper input[type=date] { appearance:none !important; -webkit-appearance:none !important; }
+  .quote-paper input[type=date]::-webkit-calendar-picker-indicator { display:none !important; -webkit-appearance:none !important; }
   .quote-footer-box { padding: 5px 7px !important; font-size: 9px !important; line-height: 1.25 !important; }
   .quote-footer-row { gap: 6px; }
   .quote-agent { min-width: 160px; gap: 3px; }
