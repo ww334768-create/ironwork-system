@@ -609,7 +609,13 @@ const res = await fetch(API_URL, {
 });
 
 if (!res.ok) {
-  throw new Error(`HTTP ${res.status}`);
+  throw new Error("HTTP " + res.status);
+}
+
+const result = await res.json();
+
+if (result.result !== "success") {
+  throw new Error(result.message || "雲端儲存失敗");
 }
 
 statusEl.textContent = '✅ 異動已成功同步至雲端！';
