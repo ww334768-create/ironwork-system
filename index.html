@@ -411,7 +411,6 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         </div>
       </div>
 
-      <div style="font-weight:bold;color:red;font-size:14px;margin-bottom:10px;">⭐️為自己的工作</div>
       <div id="salaryTableContainer"></div>
     </div>
   </section>
@@ -1474,7 +1473,7 @@ function renderSalaryPage() {
 
   let totalIncome = totalSalarySum + Number(currentMonthBonus || 0);
 
-  tableContainer.innerHTML = ` <div id="salaryTotalFooter" style="background:#fafafa; border:1px solid #d1d5db; border-radius:8px; padding:12px 15px; margin-bottom:12px; font-weight:bold; font-size:15px;"> ${currentSalaryMonth}月份總計： <span style="color:#173b63;"> 薪水總額：${money(totalSalarySum)} ＋ 月獎金：${money(currentMonthBonus)} </span> ＝ <span style="color:#e87522;"> 總收入：${money(totalIncome)} </span> </div> <div class="table-responsive">
+  tableContainer.innerHTML = ` <div id="salaryTotalFooter" style="background:#fafafa; border:1px solid #d1d5db; border-radius:8px; padding:12px 15px; margin-bottom:12px; font-weight:bold; font-size:15px;"> ${currentSalaryMonth}月份總計： <span style="color:#173b63;"> 薪水總額：${money(totalSalarySum)} ＋ 月獎金：${money(currentMonthBonus)} </span> ＝ <span style="color:#e87522;"> 總收入：${money(totalIncome)} </span> </div><div style="font-size:13px;color:#6b7280;margin:6px 0 8px;">⭐ 為自己的工作</div> <div class="table-responsive">
       <table>
         <thead>
           <tr style="background:#f2f2f2">
