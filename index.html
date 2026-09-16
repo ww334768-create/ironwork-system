@@ -82,6 +82,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-summary-table{width:100%;border-collapse:collapse;margin-top:12px}
 .quote-summary-table td{border:1px solid #d1d5db;padding:8px;font-size:14px;white-space:normal;vertical-align:middle;}
 
+@media (max-width:600px){#salaryYearSummary{grid-template-columns:1fr!important}}
 @media print {
   @page { size: A4 portrait; margin: 0; }
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
@@ -383,38 +384,34 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   <!-- 薪水紀錄表 -->
   <section id="salary" class="page">
     <div class="section">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:15px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
         <h2 style="margin:0;">💵 全年薪水與獎金紀錄表</h2>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <label for="salaryYearSelect" style="margin:0; font-weight:bold;">選擇年份：</label>
-          <select id="salaryYearSelect" onchange="changeSalaryYear()" style="width:110px; font-weight:bold; color:#173b63;"></select>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label for="salaryYearSelect" style="margin:0;font-weight:bold;">選擇年份：</label>
+          <select id="salaryYearSelect" onchange="changeSalaryYear()" style="width:110px;font-weight:bold;color:#173b63;"></select>
         </div>
       </div>
 
-      <!-- 月份按鈕列 -->
-      <div id="salaryMonthButtons" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;"></div>
+      <div id="salaryYearSummary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;"></div>
 
-      <!-- 最上方自訂金額與獎金區塊 -->
-      <div style="background:#f9fafb; padding:15px; border-radius:10px; margin-bottom:16px; border:1px solid #e5e7eb; display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;">
-        <div style="flex:1; min-width:250px;">
-          <label style="font-weight:bold; color:#173b63;">➕ 自訂新增常用薪水金額選項：</label>
-          <div style="display:flex; gap:8px; margin-top:5px;">
-            <input type="number" id="newSalaryOptionInput" min="0" placeholder="例如: 2800" style="flex:1;" />
-            <button class="secondary" onclick="addNewSalaryOption()">新增金額選項</button>
+      <div style="font-weight:bold;color:#173b63;margin-bottom:7px;">📅 選擇月份</div>
+      <div id="salaryMonthButtons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+
+      <div style="background:#f9fafb;padding:12px;border-radius:10px;margin-bottom:12px;border:1px solid #e5e7eb;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:1;min-width:220px;">
+          <label style="font-weight:bold;color:#173b63;">➕ 自訂常用薪水金額</label>
+          <div style="display:flex;gap:8px;margin-top:5px;">
+            <input type="number" id="newSalaryOptionInput" min="0" placeholder="例如：2800" style="flex:1;" />
+            <button class="secondary" onclick="addNewSalaryOption()">新增</button>
           </div>
         </div>
-        <div style="flex:1; min-width:280px;">
-          <label style="font-weight:bold; color:#e87522;">當月獎金</label>
-          <div style="display:flex; gap:8px; margin-top:5px;">
-            <input type="number" id="monthBonusInput" placeholder="輸入當月獎金金額" oninput="updateMonthBonus()" style="flex:1;" />
-          </div>
+        <div style="flex:1;min-width:220px;">
+          <label style="font-weight:bold;color:#e87522;">當月獎金</label>
+          <input type="number" id="monthBonusInput" placeholder="輸入當月獎金金額" oninput="updateMonthBonus()" />
         </div>
       </div>
 
-      <!-- ⭐️為自己工作 提示標籤 -->
-      <div style="font-weight:bold; color:red; font-size:14px; margin-bottom:10px;">⭐️為自己的工作</div>
-
-      <!-- 該月份薪水紀錄表格 -->
+      <div style="font-weight:bold;color:red;font-size:14px;margin-bottom:10px;">⭐️為自己的工作</div>
       <div id="salaryTableContainer"></div>
     </div>
   </section>
@@ -1349,6 +1346,36 @@ function renderSalaryPage() {
   
   let monthBonusInputEl = document.getElementById('monthBonusInput');
   if (monthBonusInputEl) monthBonusInputEl.value = currentMonthBonus || '';
+
+  let annualSalaryTotal = 0;
+  Object.keys(db.salaryRecords || {}).forEach(dateKey => {
+    if (dateKey.startsWith(`${currentSalaryYear}-`)) {
+      let record = db.salaryRecords[dateKey];
+      if (record && !record.off && !record.selfWork) annualSalaryTotal += Number(record.salary) || 0;
+    }
+  });
+  let annualBonusTotal = 0;
+  Object.keys(db.monthBonuses || {}).forEach(key => {
+    if (key.startsWith(`${currentSalaryYear}-`)) annualBonusTotal += Number(db.monthBonuses[key]) || 0;
+  });
+  let annualIncomeTotal = annualSalaryTotal + annualBonusTotal;
+  let yearSummary = document.getElementById('salaryYearSummary');
+  if (yearSummary) {
+    yearSummary.innerHTML = `
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:11px 12px;">
+        <div style="font-size:12px;color:#6b7280;">💰 年度薪水</div>
+        <div style="font-size:19px;font-weight:bold;color:#173b63;margin-top:3px;">${money(annualSalaryTotal)}</div>
+      </div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:11px 12px;">
+        <div style="font-size:12px;color:#6b7280;">🎁 年度獎金</div>
+        <div style="font-size:19px;font-weight:bold;color:#e87522;margin-top:3px;">${money(annualBonusTotal)}</div>
+      </div>
+      <div style="background:#eef2f7;border:1px solid #d1d5db;border-radius:10px;padding:11px 12px;">
+        <div style="font-size:12px;color:#6b7280;">⭐ ${currentSalaryYear} 年總收入</div>
+        <div style="font-size:19px;font-weight:bold;color:#173b63;margin-top:3px;">${money(annualIncomeTotal)}</div>
+      </div>
+    `;
+  }
 
   let tableContainer = document.getElementById('salaryTableContainer');
   if (!tableContainer) return;
