@@ -101,11 +101,17 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   #qDate { display:none !important; }
   .print-only-date { display:inline-block !important; font-size:11px !important; padding:4px 0 !important; }
   /* 金額是第7欄，明確補上右框線；操作欄第8欄列印時隱藏 */
-  .quote-table { border-left:1px solid #333 !important; border-right:1px solid #333 !important; }
+  /* 列印時強制畫出整張明細表的外框，不縮欄位、不改內容 */
+  .quote-table {
+    border-collapse:collapse !important;
+    outline:1.5px solid #222 !important;
+    outline-offset:-1px !important;
+  }
   .quote-table th:nth-child(7),
-  .quote-table td:nth-child(7) { border-right:1px solid #333 !important; }
-  .quote-table th:last-child,
-  .quote-table td:last-child { border-right:1px solid #333 !important; }
+  .quote-table td:nth-child(7) {
+    border-right:1.5px solid #222 !important;
+    border-left:1px solid #333 !important;
+  }
   .quote-table input { font-size: 10px !important; height: 19px !important; padding: 0 !important; }
   .quote-footer-box { padding: 5px 7px !important; font-size: 9px !important; line-height: 1.25 !important; }
   .quote-footer-row { gap: 6px; }
