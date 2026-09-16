@@ -84,12 +84,25 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
 @media (max-width:600px){#salaryYearSummary{grid-template-columns:1fr!important}}
 @media print {
-  @page { size: A4 portrait; margin: 0; }
+  @page { size: A4 portrait; margin: 6mm 5mm; }
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
   body { background: white; -webkit-print-color-adjust: exact; }
-  .quote-paper { box-shadow: none; padding: 15px; margin: 0; width: 100%; max-width: 100%; page-break-inside: avoid; border-radius: 0; }
-  .quote-table { min-width: 100% !important; table-layout: auto !important; }
+  .quote-paper { box-shadow: none; padding: 4px; margin: 0; width: 100%; max-width: 100%; page-break-inside: avoid; border-radius: 0; }
+  .quote-header { padding-bottom: 3px; margin-bottom: 5px; }
+  .quote-header h2 { font-size: 18px; }
+  .quote-meta { margin-bottom: 5px; gap: 5px; }
+  .quote-meta label { font-size: 10px !important; margin-bottom: 2px; }
+  .quote-meta input { font-size: 11px !important; padding: 4px 6px !important; height: 27px !important; }
+  .quote-table { min-width: 100% !important; table-layout: fixed !important; }
+  .quote-table th, .quote-table td { padding: 2px 3px !important; font-size: 10px !important; height: 23px !important; line-height: 1.1 !important; }
+  .quote-table input { font-size: 10px !important; height: 19px !important; padding: 0 !important; }
+  .quote-footer-box { padding: 5px 7px !important; font-size: 9px !important; line-height: 1.25 !important; }
+  .quote-footer-row { gap: 6px; }
+  .quote-agent { min-width: 160px; gap: 3px; }
+  .quote-summary-table { margin-top: 5px !important; }
+  .quote-summary-table td { padding: 4px !important; font-size: 10px !important; }
+  .quote-summary-table input { height: 19px !important; font-size: 10px !important; }
   .quote-table th, .quote-table td, .quote-footer-box, .quote-summary-table td { border-color: #333 !important; }
   .quote-footer-box { background: transparent !important; }
   .page { display: block !important; }
