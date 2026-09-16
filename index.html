@@ -564,37 +564,71 @@ function sortByDateDesc(arr) {
 async function loadCloudData() {
   const statusEl = document.getElementById('syncText');
   statusEl.textContent = '☁️ 雲端同步中，正在讀取最新資料...';
-  try {
-    const res = await fetch(API_URL);
-    const cloudData = await res.json();
-    if (cloudData && cloudData.length > 0) {
-      for (let i = cloudData.length - 1; i >= 0; i--) {
-        try {
-          let parsed = JSON.parse(cloudData[i].content);
-          if (parsed && parsed.projects) {
-            db = parsed;
-            if(!db.quotesList) db.quotesList = [];
-            if(!db.wages) db.wages = [];
-            if(!db.salaryRecords) db.salaryRecords = {};
-            if(!db.monthBonuses) db.monthBonuses = {};
-            if(!db.salaryEditingState) db.salaryEditingState = {};
-            if (!Array.isArray(db.salaryAmounts) || db.salaryAmounts.length === 0) {
-  db.salaryAmounts = [3000, 2700];
-}
-            db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
-            if(!db.historyPersons) db.historyPersons = [];
-            db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
-            localStorage.setItem(KEY, JSON.stringify(db));
-            statusEl.textContent = '✅ 雲端同步完成！';
-            render(); renderQuote(); renderQuoteHistory(); renderSalaryPage();
-            return;
-          }
-        } catch(e) {}
+
+  // Google Apps Script 第一次啟動可能需要較久時間，第一次失敗時自動重試
+  const maxAttempts = 3;
+  const timeoutMs = 15000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let controller = null;
+    let timeoutId = null;
+
+    try {
+      controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      // 加上時間戳，避免第一次開啟時拿到瀏覽器快取
+      const res = await fetch(API_URL + '?t=' + Date.now(), {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal
+      });
+
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
       }
+
+      const cloudData = await res.json();
+
+      if (cloudData && cloudData.length > 0) {
+        for (let i = cloudData.length - 1; i >= 0; i--) {
+          try {
+            let parsed = JSON.parse(cloudData[i].content);
+            if (parsed && parsed.projects) {
+              db = parsed;
+              if(!db.quotesList) db.quotesList = [];
+              if(!db.wages) db.wages = [];
+              if(!db.salaryRecords) db.salaryRecords = {};
+              if(!db.monthBonuses) db.monthBonuses = {};
+              if(!db.salaryEditingState) db.salaryEditingState = {};
+              if (!Array.isArray(db.salaryAmounts) || db.salaryAmounts.length === 0) {
+                db.salaryAmounts = [3000, 2700];
+              }
+              db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
+              if(!db.historyPersons) db.historyPersons = [];
+              db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
+              localStorage.setItem(KEY, JSON.stringify(db));
+              statusEl.textContent = '✅ 雲端同步完成！';
+              render(); renderQuote(); renderQuoteHistory(); renderSalaryPage();
+              return;
+            }
+          } catch(e) {}
+        }
+      }
+
+      statusEl.textContent = '✅ 已連接雲端資料庫。';
+      return;
+
+    } catch (err) {
+      if (attempt < maxAttempts) {
+        statusEl.textContent = `☁️ 雲端正在重新連線（第 ${attempt + 1} 次）...`;
+        await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+      } else {
+        statusEl.textContent = '⚠️ 雲端暫時連線失敗，目前顯示本機資料；稍後可再按「立即同步」。';
+      }
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
-    statusEl.textContent = '✅ 已連接雲端資料庫。';
-  } catch (err) {
-    statusEl.textContent = '⚠️ 雲端連線失敗，目前顯示離線暫存資料。';
   }
 }
 
