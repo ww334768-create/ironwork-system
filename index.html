@@ -706,12 +706,25 @@ function processPastedData() {
       // 遇到合計／總計後，後面通常不是品項
       if (/^(合計|總計|工程總金額|小計)/.test(rowText) || rowText.includes('工程總金額')) continue;
 
-      let itemName = col.name >= 0 ? (row[col.name] || '') : '';
-      let spec = col.spec >= 0 ? (row[col.spec] || '') : '';
-      let qtyRaw = col.qty >= 0 ? (row[col.qty] || '') : '';
-      let unit = col.unit >= 0 ? (row[col.unit] || '') : '';
-      let priceRaw = col.price >= 0 ? (row[col.price] || '') : '';
-      let totalRaw = col.total >= 0 ? (row[col.total] || '') : '';
+      // Google 試算表的「工程項目」標題可能合併了「項次＋工程項目」兩格，
+      // 複製貼上後標題只會留下「工程項目」，但資料列會變成：1、工程項目、規格、數量、...
+      // 偵測第一欄是項次數字時，整組欄位向右對齊一格。
+      let columnShift = 0;
+      if (col.name >= 0) {
+        const firstCell = String(row[col.name] || '').replace(/[,，\s]/g, '');
+        const nextCell = String(row[col.name + 1] || '').trim();
+        if (/^\d+$/.test(firstCell) && nextCell && Number.isNaN(Number(nextCell))) {
+          columnShift = 1;
+        }
+      }
+
+      const getCell = (idx) => idx >= 0 ? (row[idx + columnShift] || '') : '';
+      let itemName = getCell(col.name);
+      let spec = getCell(col.spec);
+      let qtyRaw = getCell(col.qty);
+      let unit = getCell(col.unit);
+      let priceRaw = getCell(col.price);
+      let totalRaw = getCell(col.total);
 
       let qty = parseFloat(String(qtyRaw).replace(/[,，\s]/g, '')) || 0;
       let price = parseFloat(String(priceRaw).replace(/[$,，\s]/g, '')) || 0;
@@ -729,7 +742,7 @@ function processPastedData() {
           total: total
         });
 
-        if (!note && col.remark >= 0 && row[col.remark]) note = row[col.remark];
+        if (!note && col.remark >= 0 && row[col.remark + columnShift]) note = row[col.remark + columnShift];
       }
     }
   }
