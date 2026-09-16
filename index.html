@@ -94,8 +94,13 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   .quote-meta { margin-bottom: 5px; gap: 5px; }
   .quote-meta label { font-size: 10px !important; margin-bottom: 2px; }
   .quote-meta input { font-size: 11px !important; padding: 4px 6px !important; height: 27px !important; }
-  .quote-table { min-width: 100% !important; table-layout: fixed !important; }
+  .quote-table { min-width: 100% !important; table-layout: fixed !important; border: 1px solid #333 !important; }
   .quote-table th, .quote-table td { padding: 2px 3px !important; font-size: 10px !important; height: 23px !important; line-height: 1.1 !important; }
+  /* 列印時隱藏日期欄位右側的日曆圖示 */
+  #qDate { -webkit-appearance: none !important; appearance: none !important; padding-right: 0 !important; }
+  #qDate::-webkit-calendar-picker-indicator { display: none !important; }
+  /* 操作欄列印時隱藏後，補回最後一個可見欄位（金額）的右框線 */
+  .quote-table tr > *:nth-last-child(2) { border-right: 1px solid #333 !important; }
   .quote-table input { font-size: 10px !important; height: 19px !important; padding: 0 !important; }
   .quote-footer-box { padding: 5px 7px !important; font-size: 9px !important; line-height: 1.25 !important; }
   .quote-footer-row { gap: 6px; }
