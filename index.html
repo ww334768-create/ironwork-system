@@ -517,8 +517,9 @@ if (!db.salaryRecords) db.salaryRecords = {};
 if (!db.monthBonuses) db.monthBonuses = {};
 if (!db.salaryEditingState) db.salaryEditingState = {};
 
-db.salaryAmounts = [3000, 2700];
-
+if (!Array.isArray(db.salaryAmounts) || db.salaryAmounts.length === 0) {
+  db.salaryAmounts = [3000, 2700];
+}
 if (db.historyPersons) {
   db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
 }
@@ -547,7 +548,9 @@ async function loadCloudData() {
             if(!db.salaryRecords) db.salaryRecords = {};
             if(!db.monthBonuses) db.monthBonuses = {};
             if(!db.salaryEditingState) db.salaryEditingState = {};
-            db.salaryAmounts = [3000, 2700];
+            if (!Array.isArray(db.salaryAmounts) || db.salaryAmounts.length === 0) {
+  db.salaryAmounts = [3000, 2700];
+}
             db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
             if(!db.historyPersons) db.historyPersons = [];
             db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
@@ -1500,7 +1503,9 @@ function addNewSalaryOption() {
     alert('請輸入有效的金額數字！');
     return;
   }
-  if (!db.salaryAmounts) db.salaryAmounts = [3000, 2700];
+  if (!Array.isArray(db.salaryAmounts) || db.salaryAmounts.length === 0) {
+  db.salaryAmounts = [3000, 2700];
+}
   if (!db.salaryAmounts.includes(val)) {
     db.salaryAmounts.push(val);
     db.salaryAmounts.sort((a, b) => b - a);
