@@ -747,7 +747,7 @@ function renderQuote() {
 
   let calculatedTotal = (q.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
   document.getElementById('qTotalStr').value = calculatedTotal ? calculatedTotal.toLocaleString() : '';
-  document.getElementById('qDepositStr').value = calculatedTotal ? Math.round(calculatedTotal * 0.3).toLocaleString() : '';
+  document.getElementById('qDepositStr').value = calculatedTotal ? Math.round(calculatedTotal * (Number(q.depositPercent || 3) / 10)).toLocaleString() : '';
 
   if (q.date) {
     let parts = q.date.split('-');
