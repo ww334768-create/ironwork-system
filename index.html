@@ -499,7 +499,10 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 const API_URL = "https://script.google.com/macros/s/AKfycbxHkU3rSgVg_wjyvaDJpmWtWyV0KYAIcthj-ojKv5iUBWYLXmu9YH0lfq-mWdA-ayn-/exec";
 const KEY = 'iron_work_system_data';
 const todayDateObj = new Date();
-const today = todayDateObj.toISOString().split('T')[0];
+const today =
+  todayDateObj.getFullYear() + '-' +
+  String(todayDateObj.getMonth() + 1).padStart(2, '0') + '-' +
+  String(todayDateObj.getDate()).padStart(2, '0');
 
 let currentQuoteId = null;
 let currentSalaryYear = todayDateObj.getFullYear();
