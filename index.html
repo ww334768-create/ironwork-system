@@ -562,11 +562,13 @@ function sortByDateDesc(arr) {
 
 async function loadCloudData() {
   const statusEl = document.getElementById('syncText');
-  statusEl.textContent = '☁️ 雲端同步中，正在讀取最新資料...';
+  statusEl.textContent = '☁️ 正在讀取雲端最新資料...';
 
-  // Google Apps Script 第一次啟動可能需要較久時間，第一次失敗時自動重試
+  // 保留本機資料作為暫存，但開啟時仍會優先取得雲端最新資料。
+  // Google Apps Script 第一次喚醒可能較慢，因此採短逾時＋自動重試，
+  // 避免長時間卡在「重新連線」。
   const maxAttempts = 3;
-  const timeoutMs = 15000;
+  const timeoutMs = 8000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let controller = null;
@@ -576,16 +578,13 @@ async function loadCloudData() {
       controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      // 加上時間戳，避免第一次開啟時拿到瀏覽器快取
       const res = await fetch(API_URL + '?t=' + Date.now(), {
         method: 'GET',
         cache: 'no-store',
         signal: controller.signal
       });
 
-      if (!res.ok) {
-        throw new Error('HTTP ' + res.status);
-      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
 
       const cloudData = await res.json();
 
@@ -606,29 +605,34 @@ async function loadCloudData() {
               db.wages.forEach(w => { if(w.bonus === undefined) w.bonus = 0; });
               if(!db.historyPersons) db.historyPersons = [];
               db.historyPersons = db.historyPersons.filter(p => p !== '阿平' && p !== '阿強');
+
               localStorage.setItem(KEY, JSON.stringify(db));
               statusEl.textContent = '✅ 雲端同步完成！';
               render(); renderQuote(); renderQuoteHistory(); renderSalaryPage();
-              return;
+              return true;
             }
           } catch(e) {}
         }
       }
 
-      statusEl.textContent = '✅ 已連接雲端資料庫。';
-      return;
+      // 雲端有回應但沒有有效資料：不要用空資料覆蓋本機。
+      statusEl.textContent = '⚠️ 雲端有回應，但沒有讀到有效資料，請稍後再試。';
+      return false;
 
     } catch (err) {
       if (attempt < maxAttempts) {
-        statusEl.textContent = `☁️ 雲端正在重新連線（第 ${attempt + 1} 次）...`;
-        await new Promise(resolve => setTimeout(resolve, attempt * 1500));
+        statusEl.textContent = `☁️ 雲端連線較慢，${attempt + 1} 秒後自動重試（第 ${attempt + 1}/${maxAttempts} 次）...`;
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } else {
-        statusEl.textContent = '⚠️ 雲端暫時連線失敗，目前顯示本機資料；稍後可再按「立即同步」。';
+        // 不清掉本機資料；使用者仍可操作，之後可按「手動整理同步」再試。
+        statusEl.textContent = '⚠️ 雲端暫時連線失敗，已保留本機資料；請稍後按「手動整理同步」。';
+        return false;
       }
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
   }
+  return false;
 }
 
 // 🚀 優化後的防抖 (Debounce) 雲端同步與儲存機制
