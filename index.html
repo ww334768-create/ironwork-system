@@ -39,6 +39,7 @@ button.danger{background:#fee2e2;color:#991b1b;border:0;padding:7px 10px;border-
 
 .table-responsive{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}
+.project-list-table th{position:sticky;top:0;z-index:5;background:#fff;box-shadow:0 1px 0 #e5e7eb;}
 th,td{padding:10px 8px;border-bottom:1px solid #eee;text-align:left}
 th{color:#6b7280;font-weight:600}
 td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-all}
@@ -1214,7 +1215,7 @@ function renderDashboard() {
 
   const active = sortByDateDesc(db.projects.filter(p => p.status === '進行中'));
   document.getElementById('dashProjects').innerHTML = active.length ? 
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td>${p.date || '-'}</td><td><b>${esc(p.name)}</b></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#dc2626;font-weight:700">${money(t.profit)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">目前沒有進行中工程</div>';
+    `<div class="table-responsive"><table><tr><th>日期</th><th>工程名稱</th><th>工程總額</th><th>支出</th><th>工資</th><th>剩餘／毛利</th></tr>${active.map(p => { let t = totals(p); return `<tr><td>${p.date || '-'}</td><td><b>${esc(p.name)}</b></td><td><b style="color:#173b63;font-weight:700">${money(p.amount)}</b></td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#dc2626;font-weight:700">${money(t.profit)}</b></td></tr>`; }).join('')}</table></div>` : '<div class="empty">目前沒有進行中工程</div>';
 
   const rec = sortByDateDesc(db.projects.filter(p => totals(p).remain > 0));
   document.getElementById('dashReceivables').innerHTML = rec.length ?
@@ -1224,9 +1225,9 @@ function renderDashboard() {
 function renderProjects() {
   let sorted = sortByDateDesc(db.projects);
   document.getElementById('projectList').innerHTML = sorted.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${sorted.map(p => {
+    `<div class="table-responsive"><table class="project-list-table"><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${sorted.map(p => {
       let t = totals(p);
-      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#dc2626;font-weight:700">${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="editProject(${p.id})">編輯</button> <button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
+      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td><b style="color:#173b63;font-weight:700">${money(p.amount)}</b></td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#dc2626;font-weight:700">${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="editProject(${p.id})">編輯</button> <button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
     }).join('')}</table></div>` : '<div class="empty">尚無工程紀錄</div>';
 }
 
