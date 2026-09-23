@@ -143,11 +143,15 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   }
 }
 </style>
-<style id="fixed-project-table-header">
-#projectList .table-responsive{max-height:65vh;overflow:auto;position:relative}
-#projectList table thead,
-#projectList table tr:first-child{position:sticky;top:0;z-index:10;background:#fff}
-#projectList table tr:first-child th{position:sticky;top:0;background:#fff;z-index:11;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+<style id="project-header-soft-sticky">
+#projectList .table-responsive{overflow:auto}
+#projectList table tr:first-child th{
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:#f8fafc;
+  border-bottom:1px solid #e5e7eb;
+}
 </style>
 
 </head>
@@ -1234,7 +1238,7 @@ function renderProjects() {
   document.getElementById('projectList').innerHTML = sorted.length ?
     `<div class="table-responsive"><table class="project-list-table"><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${sorted.map(p => {
       let t = totals(p);
-      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td><b style="color:#8b5cf6;font-weight:700">${money(p.amount)}</b></td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#dc2626;font-weight:700">${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="editProject(${p.id})">編輯</button> <button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
+      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td><b style="color:#2563eb">${money(p.amount)}</b></td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b style="color:#dc2626;font-weight:700">${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="editProject(${p.id})">編輯</button> <button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
     }).join('')}</table></div>` : '<div class="empty">尚無工程紀錄</div>';
 }
 
