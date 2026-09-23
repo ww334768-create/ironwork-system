@@ -348,7 +348,11 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         <div class="actions"><button class="primary" id="btnProject">＋ 新增工程</button></div>
       </form>
     </div>
-    <div class="section"><h2>工程列表</h2><div id="projectList"></div></div>
+    <div class="section"><h2>工程列表</h2>
+      <div class="no-print" style="display:flex;gap:10px;align-items:center;margin:0 0 14px 0;flex-wrap:wrap;">
+        <input id="projectSearchInput" type="search" placeholder="🔍 搜尋工程名稱、地址、日期、狀態……" oninput="projectSearchTerm=this.value; renderProjects();" style="flex:1;min-width:240px;max-width:520px;">
+      </div>
+      <div id="projectList"></div></div>
   </section>
 
   <!-- 支出管理 -->
@@ -542,6 +546,7 @@ let currentQuoteId = null;
 let currentSalaryYear = todayDateObj.getFullYear();
 let currentSalaryMonth = todayDateObj.getMonth() + 1;
 let syncTimer = null; // 防抖定時器
+let projectSearchTerm = '';
 let expenseSearchTerm = '';
 let wageSearchTerm = '';
 
@@ -1232,12 +1237,27 @@ function renderDashboard() {
 }
 
 function renderProjects() {
-  let sorted = sortByDateDesc(db.projects);
-  document.getElementById('projectList').innerHTML = sorted.length ?
-    `<div class="table-responsive"><table><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${sorted.map(p => {
-      let t = totals(p);
-      return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td>${money(p.amount)}</td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><b>${money(t.profit)}</b></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="editProject(${p.id})">編輯</button> <button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
-    }).join('')}</table></div>` : '<div class="empty">尚無工程紀錄</div>';
+  const keyword = String(projectSearchTerm || '').trim().toLowerCase();
+  let sorted = sortByDateDesc(db.projects).filter(p => {
+    if (!keyword) return true;
+    const searchText = [p.date, p.name, p.address, p.status, p.amount]
+      .map(v => String(v ?? '')).join(' ').toLowerCase();
+    return searchText.includes(keyword);
+  });
+
+  const listEl = document.getElementById('projectList');
+  if (sorted.length) {
+    listEl.innerHTML =
+      `<div class="table-responsive"><table class="project-list-table"><tr><th>日期</th><th>工程細節</th><th>總金額</th><th>支出</th><th>工資</th><th>毛利</th><th>未收款</th><th>狀態</th><th>操作</th></tr>${sorted.map(p => {
+        let t = totals(p);
+        return `<tr><td>${p.date}</td><td class="wrap-col"><b>${esc(p.name)}</b><br><span class="small">${esc(p.address)}</span></td><td><b style="color:#2563eb">${money(p.amount)}</b></td><td>${money(t.ex)}</td><td>${money(t.wa)}</td><td><span style="color:#ef4444">${money(t.profit)}</span></td><td><span style="color:${t.remain > 0 ? '#d97706' : '#059669'}">${money(t.remain)}</span></td><td><span class="pill">${p.status}</span></td><td><button class="secondary" onclick="editProject(${p.id})">編輯</button> <button class="secondary" onclick="detail(${p.id})">明細</button> <button class="danger" onclick="del('projects',${p.id})">刪除</button></td></tr>`;
+      }).join('')}</table></div>`;
+  } else {
+    listEl.innerHTML = keyword ? '<div class="empty">找不到符合搜尋條件的工程</div>' : '<div class="empty">尚無工程紀錄</div>';
+  }
+
+  const searchInput = document.getElementById('projectSearchInput');
+  if (searchInput && searchInput.value !== projectSearchTerm) searchInput.value = projectSearchTerm;
 }
 
 function editProject(id) {
