@@ -143,6 +143,13 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   }
 }
 </style>
+<style id="fixed-project-table-header">
+#projectList .table-responsive{max-height:65vh;overflow:auto;position:relative}
+#projectList table thead,
+#projectList table tr:first-child{position:sticky;top:0;z-index:10;background:#fff}
+#projectList table tr:first-child th{position:sticky;top:0;background:#fff;z-index:11;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+</style>
+
 </head>
 <body>
 <header>
