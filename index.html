@@ -2305,7 +2305,7 @@ async function exportQuoteImage() {
   try {
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
 
-    const printWidth = 794;
+    const printWidth = 814;
     const canvas = await html2canvas(quote, {
       scale: 3,
       backgroundColor: '#ffffff',
@@ -2323,33 +2323,46 @@ async function exportQuoteImage() {
           body { overflow:visible !important; }
           .quote-paper {
             display:block !important; width:${printWidth}px !important; min-width:0 !important; max-width:none !important;
-            margin:0 !important; padding:2px !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+            margin:0 !important; padding:8px 10px !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
             height:auto !important; overflow:visible !important; background:#fff !important; color:#000 !important;
             font-family:Arial,"Noto Sans TC",sans-serif !important;
           }
           .quote-paper * { box-sizing:border-box !important; }
           .quote-paper .no-print, .quote-paper button, .quote-paper .actions { display:none !important; }
           .quote-header { padding-bottom:4px !important; margin-bottom:8px !important; }
-          .quote-header h2 { font-size:23px !important; color:#000 !important; }
+          .quote-header h2 { font-size:25px !important; color:#000 !important; }
           .quote-meta { margin-bottom:8px !important; gap:7px !important; align-items:flex-start !important; }
           .quote-meta > div { min-width:0 !important; }
-          .quote-meta label { font-size:14px !important; margin-bottom:3px !important; color:#000 !important; }
-          .quote-meta input { font-size:15px !important; padding:3px 2px !important; height:29px !important; border:0 !important; outline:0 !important; box-shadow:none !important; border-radius:0 !important; background:transparent !important; }
+          .quote-meta label { font-size:15px !important; margin-bottom:3px !important; color:#000 !important; }
+          .quote-meta input { font-size:16px !important; padding:3px 2px !important; height:29px !important; border:0 !important; outline:0 !important; box-shadow:none !important; border-radius:0 !important; background:transparent !important; }
           #qAddress { border:0 !important; outline:0 !important; box-shadow:none !important; background:transparent !important; }
           .quote-table { width:100% !important; min-width:100% !important; table-layout:fixed !important; border-collapse:collapse !important; border:1px solid #333 !important; }
-          .quote-table th, .quote-table td { padding:3px 4px !important; font-size:12px !important; height:25px !important; line-height:1.2 !important; color:#000 !important; border-color:#333 !important; overflow:hidden !important; }
-          .quote-table input, .quote-table textarea, .quote-table select { font-size:12px !important; height:21px !important; line-height:1.2 !important; padding:0 2px !important; max-width:100% !important; min-width:0 !important; color:#000 !important; -webkit-text-fill-color:#000 !important; background:transparent !important; border:0 !important; outline:0 !important; box-shadow:none !important; }
+          .quote-table th, .quote-table td { padding:3px 4px !important; font-size:13px !important; height:27px !important; line-height:1.2 !important; color:#000 !important; border-color:#333 !important; overflow:hidden !important; }
+          .quote-table input, .quote-table textarea, .quote-table select { font-size:13px !important; height:23px !important; line-height:1.2 !important; padding:0 2px !important; max-width:100% !important; min-width:0 !important; color:#000 !important; -webkit-text-fill-color:#000 !important; background:transparent !important; border:0 !important; outline:0 !important; box-shadow:none !important; }
           .quote-table th:nth-child(7), .quote-table td:nth-child(7) { border-right:1.5px solid #222 !important; border-left:1px solid #333 !important; }
-          .quote-footer-box { padding:7px 8px !important; font-size:11px !important; line-height:1.35 !important; color:#000 !important; }
-          .quote-footer-box input { font-size:12px !important; border:0 !important; border-bottom:1px solid #000 !important; background:transparent !important; }
+          .quote-footer-box { padding:8px 9px !important; font-size:12px !important; line-height:1.4 !important; color:#000 !important; overflow:visible !important; }
+          .quote-footer-box input { font-size:13px !important; border:0 !important; border-bottom:1px solid #000 !important; background:transparent !important; }
           .quote-footer-row { gap:8px !important; }
           .quote-agent { min-width:160px !important; gap:4px !important; }
           .quote-summary-table { margin-top:7px !important; width:100% !important; }
-          .quote-summary-table td { padding:5px !important; font-size:12px !important; color:#000 !important; }
+          .quote-summary-table td { padding:6px !important; font-size:13px !important; color:#000 !important; }
           .quote-paper input, .quote-paper textarea, .quote-paper select { color:#000 !important; -webkit-text-fill-color:#000 !important; }
-          /* 與列印格式一致：隱藏地址與備註欄的提示文字、移除地址輸入框框線。 */
+          /* 匯出圖片時比照列印：隱藏備註內容與金額提示文字；金額欄若有輸入數字，仍正常顯示。 */
+          #qAddress, #qNote, #qNoteAmount { border:0 !important; outline:0 !important; box-shadow:none !important; background:transparent !important; }
+          #qNote { visibility:hidden !important; color:transparent !important; -webkit-text-fill-color:transparent !important; }
           #qAddress::placeholder, #qNote::placeholder, #qNoteAmount::placeholder { color:transparent !important; -webkit-text-fill-color:transparent !important; }
-          #qNote, #qNoteAmount { border:0 !important; outline:0 !important; box-shadow:none !important; background:transparent !important; }
+          #qNoteAmount { visibility:visible !important; color:#000 !important; -webkit-text-fill-color:#000 !important; font-size:14px !important; }
+          #qNoteAmount:placeholder-shown { color:transparent !important; -webkit-text-fill-color:transparent !important; }
+          /* 七成/三成欄位不畫外框，放寬文字空間避免數字被切掉。 */
+          #qValidDays, #qDepositPercent { border:0 !important; outline:0 !important; box-shadow:none !important; background:transparent !important; width:30px !important; min-width:30px !important; padding:0 !important; margin:0 2px !important; height:22px !important; text-align:center !important; color:#000 !important; -webkit-text-fill-color:#000 !important; }
+          /* 姓名與電話保留完整文字，不讓 flex 欄位把內容裁掉。 */
+          .quote-footer-row { display:flex !important; align-items:flex-start !important; flex-wrap:wrap !important; gap:10px 12px !important; overflow:visible !important; }
+          .quote-terms { flex:1 1 460px !important; min-width:0 !important; overflow:visible !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+          .quote-agent { flex:0 1 225px !important; width:225px !important; min-width:215px !important; max-width:100% !important; gap:6px !important; overflow:visible !important; }
+          .quote-agent > div { display:flex !important; align-items:center !important; white-space:nowrap !important; overflow:visible !important; }
+          #qAgent, #qPhone { flex:1 1 auto !important; width:120px !important; min-width:120px !important; max-width:none !important; overflow:visible !important; border:0 !important; border-bottom:1px solid #000 !important; padding:0 2px !important; white-space:nowrap !important; }
+          /* 最底下民國日期列整列隱藏。 */
+          .quote-summary-table tr:last-child { display:none !important; }
           #qTotalStr, #qDepositStr { visibility:hidden !important; color:transparent !important; -webkit-text-fill-color:transparent !important; border-color:transparent !important; }
           #quoteItems td:nth-child(1), #quoteItems td:nth-child(2), #quoteItems td:nth-child(3), #quoteItems td:nth-child(5),
           #quoteItems td:nth-child(2) input, #quoteItems td:nth-child(3) input, #quoteItems td:nth-child(5) input { text-align:center !important; }
@@ -2365,7 +2378,7 @@ async function exportQuoteImage() {
         clonedQuote.style.minWidth = '0';
         clonedQuote.style.maxWidth = 'none';
         clonedQuote.style.margin = '0';
-        clonedQuote.style.padding = '2px';
+        clonedQuote.style.padding = '8px 10px';
         clonedQuote.style.border = '0';
         clonedQuote.style.borderRadius = '0';
         clonedQuote.style.boxShadow = 'none';
