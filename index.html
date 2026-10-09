@@ -182,27 +182,40 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
     padding: 0 !important;
   }
 
+  /* 列印時隱藏地址提示、備註提示與底部金額訂金 */
+  #qAddress::placeholder,
+  #qNote::placeholder,
+  #qNoteAmount::placeholder,
+  #qTotalStr,
+  #qDepositStr {
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+  }
+  #qTotalStr,
+  #qDepositStr {
+    visibility: hidden !important;
+  }
   .quote-paper input::placeholder,
   .quote-paper textarea::placeholder {
     color: transparent !important;
   }
 }
 
-/* 強制估價單明細：數量、單價、金額欄內容靠右，欄位標題不受影響 */
+/* 估價單明細對齊：規格、項目、單位等文字置中；只有數量、單價、金額靠右 */
+#quoteItems tr > td:nth-child(2),
+#quoteItems tr > td:nth-child(3),
+#quoteItems tr > td:nth-child(5) {
+  text-align: center !important;
+}
 #quoteItems tr > td:nth-child(4),
-#quoteItems tr > td:nth-child(4) input,
 #quoteItems tr > td:nth-child(6),
-#quoteItems tr > td:nth-child(6) input,
-#quoteItems tr > td:nth-child(7),
-#quoteItems tr > td:nth-child(7) input,
-#quoteItems tr > td:nth-child(7) span,
-#quoteItems tr > td:nth-child(7) strong,
-#quoteItems tr > td:nth-child(7) div {
+#quoteItems tr > td:nth-child(7) {
   text-align: right !important;
 }
 #quoteItems tr > td:nth-child(4) input,
 #quoteItems tr > td:nth-child(6) input,
 #quoteItems tr > td:nth-child(7) input {
+  text-align: right !important;
   display: block !important;
   width: 100% !important;
   padding-right: 8px !important;
@@ -210,7 +223,6 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 #quoteItems tr > td:nth-child(7) {
   padding-right: 8px !important;
 }
-
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -2306,6 +2318,12 @@ async function exportQuoteImage() {
           .quote-summary-table { margin-top:5px !important; width:100% !important; }
           .quote-summary-table td { padding:4px !important; font-size:10px !important; color:#000 !important; }
           .quote-paper input, .quote-paper textarea, .quote-paper select { color:#000 !important; -webkit-text-fill-color:#000 !important; }
+          /* 圖片匯出比照列印：不顯示地址/備註提示字，也隱藏底部金額與訂金欄 */
+          #qAddress::placeholder, #qNote::placeholder, #qNoteAmount::placeholder { color:transparent !important; -webkit-text-fill-color:transparent !important; }
+          #qTotalStr, #qDepositStr { visibility:hidden !important; color:transparent !important; -webkit-text-fill-color:transparent !important; border-color:transparent !important; }
+          #quoteItems tr > td:nth-child(2), #quoteItems tr > td:nth-child(3), #quoteItems tr > td:nth-child(5) { text-align:center !important; }
+          #quoteItems tr > td:nth-child(4), #quoteItems tr > td:nth-child(6), #quoteItems tr > td:nth-child(7),
+          #quoteItems tr > td:nth-child(4) input, #quoteItems tr > td:nth-child(6) input, #quoteItems tr > td:nth-child(7) input { text-align:right !important; }
           #qDate { display:none !important; }
           .print-only-date { display:inline-block !important; font-size:11px !important; padding:4px 0 !important; }
         `;
