@@ -2391,13 +2391,26 @@ async function exportQuoteImage() {
           .quote-agent > div { display:flex !important; align-items:center !important; white-space:nowrap !important; overflow:visible !important; }  
           #qAgent, #qPhone { flex:1 1 auto !important; width:120px !important; min-width:120px !important; max-width:none !important; overflow:visible !important; border:0 !important; border-bottom:1px solid #000 !important; padding:0 2px !important; white-space:nowrap !important; }  
           /* 經手人姓名與電話使用相同字級，文字上移並與底線保留距離。 */  
-          #qAgent, #qPhone {  
-            font-size:13px !important;  
-            padding-top:0 !important;  
-            padding-bottom:4px !important;  
-            height:25px !important;  
-            line-height:1.1 !important;  
-          }  
+          /* 最終統一黃色備註框內所有文字：左側1～4點、右側標籤、姓名電話輸入值與數字欄位都使用相同字級。 */
+          .quote-footer-box .quote-terms,
+          .quote-footer-box .quote-terms > div,
+          .quote-footer-box .quote-terms > div *,
+          .quote-footer-box .quote-agent,
+          .quote-footer-box .quote-agent > div,
+          .quote-footer-box .quote-agent > div *,
+          .quote-footer-box #qValidDays,
+          .quote-footer-box #qDepositPercent,
+          .quote-footer-box #qAgent,
+          .quote-footer-box #qPhone {
+            font-size:16px !important;
+            line-height:1.35 !important;
+            font-weight:normal !important;
+          }
+          #qAgent, #qPhone {
+            padding-top:0 !important;
+            padding-bottom:4px !important;
+            height:27px !important;
+          }
           /* 最底下日期保留「中華民國、年、月、日」文字，只隱藏可打字的日期輸入框。 */  
           #qYear, #qMonth, #qDay {  
             visibility:hidden !important;  
