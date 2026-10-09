@@ -1031,6 +1031,31 @@ function loadQuote(id) {
   }
 }
 
+function duplicateQuote(id) {
+  const original = (db.quotesList || []).find(q => String(q.id) === String(id));
+  if (!original) {
+    alert('找不到這筆歷史估價單，請重新整理後再試。');
+    return;
+  }
+
+  // 複製成新的編輯資料，不修改原本歷史紀錄；儲存時會建立新的 ID。
+  db.activeQuote = JSON.parse(JSON.stringify(original));
+  delete db.activeQuote.id;
+  db.activeQuote.date = today;
+  db.activeQuote.items = (db.activeQuote.items || []).map(item => ({
+    ...item,
+    total: (Number(item.qty) || 0) * (Number(item.price) || 0)
+  }));
+  db.activeQuote.totalAmount = db.activeQuote.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+  currentQuoteId = null;
+
+  document.getElementById('currentQuoteStatus').textContent = `📄 目前編輯：複製自「${original.name || '未命名估價單'}」（尚未儲存）`;
+  renderQuote();
+  document.querySelector('button[data-page="quotes"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  alert('已複製成新的估價單！請確認內容後，按「儲存估價單數據」保存。原本的歷史估價單不會被修改。');
+}
+
 function deleteQuote(id) {
   if (confirm('確定要刪除這筆估價單紀錄嗎？')) {
     db.quotesList = db.quotesList.filter(x => x.id !== id);
@@ -1059,6 +1084,7 @@ function renderQuoteHistory() {
             <td><b>${money(q.totalAmount || 0)}</b></td>
             <td>
               <button class="secondary" onclick="loadQuote('${q.id}')">📂 載入</button>
+              <button class="secondary" onclick="duplicateQuote('${q.id}')">📑 複製</button>
               <button class="danger" onclick="deleteQuote('${q.id}')">刪除</button>
             </td>
           </tr>
