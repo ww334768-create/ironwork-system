@@ -74,11 +74,21 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-table th,.quote-table td{border:1px solid #d1d5db;padding:6px 4px;text-align:center;font-size:14px;height:36px;white-space:nowrap;overflow:hidden}
 .quote-table input{border:1px solid transparent;background:transparent;padding:4px;text-align:center;width:100%;font-size:14px;height:100%;border-radius:4px}
 
-/* 數量、單價、金額欄位：輸入內容靠右，表頭維持置中 */
-#quoteItems td:nth-child(4) input,
+/* 數量、單價、金額欄位：內容靠右，表頭維持置中 */
+#quoteItems td:nth-child(3),
+#quoteItems td:nth-child(3) input,
+#quoteItems td:nth-child(5),
+#quoteItems td:nth-child(5) input,
+#quoteItems td:nth-child(6),
 #quoteItems td:nth-child(6) input,
-#quoteItems td:nth-child(7) input {
+#quoteItems td:nth-child(6) span,
+#quoteItems td:nth-child(6) strong,
+#quoteItems td:nth-child(6) div {
   text-align: right !important;
+}
+#quoteItems td:nth-child(3) input,
+#quoteItems td:nth-child(5) input,
+#quoteItems td:nth-child(6) input {
   padding-right: 8px !important;
 }
 
