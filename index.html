@@ -2361,8 +2361,16 @@ async function exportQuoteImage() {
           .quote-agent { flex:0 1 225px !important; width:225px !important; min-width:215px !important; max-width:100% !important; gap:6px !important; overflow:visible !important; }
           .quote-agent > div { display:flex !important; align-items:center !important; white-space:nowrap !important; overflow:visible !important; }
           #qAgent, #qPhone { flex:1 1 auto !important; width:120px !important; min-width:120px !important; max-width:none !important; overflow:visible !important; border:0 !important; border-bottom:1px solid #000 !important; padding:0 2px !important; white-space:nowrap !important; }
-          /* 最底下民國日期列整列隱藏。 */
-          .quote-summary-table tr:last-child { display:none !important; }
+          /* 最底下日期保留「中華民國、年、月、日」文字，只隱藏可打字的日期輸入框。 */
+          #qYear, #qMonth, #qDay {
+            visibility:hidden !important;
+            color:transparent !important;
+            -webkit-text-fill-color:transparent !important;
+            border-color:transparent !important;
+            background:transparent !important;
+            box-shadow:none !important;
+            outline:none !important;
+          }
           #qTotalStr, #qDepositStr { visibility:hidden !important; color:transparent !important; -webkit-text-fill-color:transparent !important; border-color:transparent !important; }
           #quoteItems td:nth-child(1), #quoteItems td:nth-child(2), #quoteItems td:nth-child(3), #quoteItems td:nth-child(5),
           #quoteItems td:nth-child(2) input, #quoteItems td:nth-child(3) input, #quoteItems td:nth-child(5) input { text-align:center !important; }
