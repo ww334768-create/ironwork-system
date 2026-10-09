@@ -248,8 +248,11 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
             </tr>
             <tr>
               <td colspan="2" style="font-weight:bold;background:#fafafa">備註說明</td>
-              <td colspan="5">
+              <td colspan="4">
                 <input id="qNote" placeholder="例如：項目包含石棉瓦裝太空包 不含清運" style="text-align:left;padding:6px 8px;border:1px solid #d1d5db;background:#fff;height:36px;border-radius:4px;">
+              </td>
+              <td>
+                <input id="qNoteAmount" type="text" inputmode="decimal" placeholder="金額" style="text-align:right;padding:6px 8px;border:1px solid #d1d5db;background:#fff;height:36px;border-radius:4px;width:100%;">
               </td>
               <td class="no-print"></td>
             </tr>
@@ -862,11 +865,13 @@ function processPastedData() {
     }
   }
 
+  selectedQuoteRowIndex = null;
   db.activeQuote = {
     date: parsedDate,
     address: address || '未命名地址',
     name: '',
     note: note,
+    noteAmount: '',
     agent: '',
     phone: '',
     validDays: 7,
@@ -884,7 +889,7 @@ function processPastedData() {
 
 function renderQuote() {
   if (!db.activeQuote) {
-    db.activeQuote = { date: today, address: '', name: '', items: [], note: '', agent: '', phone: '', validDays: 7, depositPercent: 3 };
+    db.activeQuote = { date: today, address: '', name: '', items: [], note: '', noteAmount: '', agent: '', phone: '', validDays: 7, depositPercent: 3 };
   }
   let q = db.activeQuote;
 
@@ -902,6 +907,7 @@ function renderQuote() {
   document.getElementById('qAgent').value = q.agent || '';
   document.getElementById('qPhone').value = q.phone || '';
   document.getElementById('qNote').value = q.note || '';
+  document.getElementById('qNoteAmount').value = q.noteAmount || '';
   document.getElementById('qValidDays').value = q.validDays || 7;
   document.getElementById('qDepositPercent').value = q.depositPercent || 3;
 
@@ -960,14 +966,42 @@ function updateQuoteItem(idx, key, val) {
   calcQuoteTotal();
 }
 
+let selectedQuoteRowIndex = null;
+
+// 記錄目前正在編輯的品項列，供下方「新增品項欄位」插入在該列後方。
+document.getElementById('quoteItems').addEventListener('focusin', function(event) {
+  const input = event.target.closest('input');
+  const row = input && input.closest('tr');
+  if (!row) return;
+  const rowIndex = Array.prototype.indexOf.call(this.children, row);
+  const items = (db.activeQuote && db.activeQuote.items) || [];
+  selectedQuoteRowIndex = rowIndex >= 0 && rowIndex < items.length ? rowIndex : null;
+});
+
 function addQuoteRow() {
   if (!db.activeQuote.items) db.activeQuote.items = [];
-  db.activeQuote.items.push({ name: '', spec: '', qty: '', unit: '', price: '', total: 0 });
+  const items = db.activeQuote.items;
+  const newItem = { name: '', spec: '', qty: '', unit: '', price: '', total: 0 };
+  let insertAt = items.length;
+  if (selectedQuoteRowIndex !== null && selectedQuoteRowIndex >= 0 && selectedQuoteRowIndex < items.length) {
+    insertAt = selectedQuoteRowIndex + 1;
+    items.splice(insertAt, 0, newItem);
+  } else {
+    items.push(newItem);
+  }
+  selectedQuoteRowIndex = insertAt;
   renderQuote();
+  const newRow = document.getElementById('quoteItems').children[insertAt];
+  const firstInput = newRow && newRow.querySelector('input');
+  if (firstInput) firstInput.focus();
 }
 
 function removeQuoteRow(idx) {
   db.activeQuote.items.splice(idx, 1);
+  if (selectedQuoteRowIndex !== null) {
+    if (selectedQuoteRowIndex === idx) selectedQuoteRowIndex = null;
+    else if (selectedQuoteRowIndex > idx) selectedQuoteRowIndex--;
+  }
   renderQuote();
 }
 
@@ -1006,14 +1040,16 @@ function syncCurrentQuoteFromForm() {
   db.activeQuote.agent = document.getElementById('qAgent').value;
   db.activeQuote.phone = document.getElementById('qPhone').value;
   db.activeQuote.note = document.getElementById('qNote').value;
+  db.activeQuote.noteAmount = document.getElementById('qNoteAmount').value;
   db.activeQuote.validDays = document.getElementById('qValidDays').value;
   db.activeQuote.depositPercent = document.getElementById('qDepositPercent').value;
 }
 
 function resetNewQuote() {
   currentQuoteId = null;
+  selectedQuoteRowIndex = null;
   db.activeQuote = {
-    date: today, address: '', name: '', note: '', agent: '', phone: '', validDays: 7, depositPercent: 3,
+    date: today, address: '', name: '', note: '', noteAmount: '', agent: '', phone: '', validDays: 7, depositPercent: 3,
     items: [{ name: '', spec: '', qty: '', unit: '', price: '', total: 0 }]
   };
   document.getElementById('currentQuoteStatus').textContent = '📄 目前編輯：新估價單';
@@ -1024,6 +1060,7 @@ function loadQuote(id) {
   let q = db.quotesList.find(x => x.id === id);
   if (q) {
     currentQuoteId = q.id;
+    selectedQuoteRowIndex = null;
     db.activeQuote = JSON.parse(JSON.stringify(q));
     document.getElementById('currentQuoteStatus').textContent = `📄 目前編輯：${q.name || '估價單'}`;
     renderQuote();
@@ -1986,133 +2023,4 @@ function esc(s) { return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
-  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-  document.getElementById(b.dataset.page).classList.add('active');
-  if (syncTimer) {
-    clearTimeout(syncTimer);
-    syncToCloudNow();
-  }
-});
-
-document.getElementById('eProject').onchange = (e) => { updateSubFormDates(e.target.value); };
-document.getElementById('wProject').onchange = (e) => { updateSubFormDates(e.target.value); };
-document.getElementById('payProject').onchange = (e) => { updateSubFormDates(e.target.value); };
-
-document.getElementById('projectForm').onsubmit = e => {
-  e.preventDefault();
-  let editId = document.getElementById('editingProjectId').value;
-  let newName = pName.value.trim();
-  let newAmount = +pAmount.value;
-  let newStatus = pStatus.value;
-  let targetProjectId;
-  
-  let duplicate = db.projects.find(p => p.name.trim() === newName && p.id != editId);
-  if (duplicate) {
-    alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程，客戶／工程名稱不可重複！請修改名稱後再試。`);
-    return;
-  }
-  
-  if (editId) {
-    let p = db.projects.find(x => x.id == editId);
-    if (p) {
-      targetProjectId = p.id;
-      p.date = pDate.value; p.address = pAddress.value; p.name = newName; p.amount = newAmount; p.status = newStatus;
-    }
-  } else {
-    targetProjectId = uid();
-    db.projects.push({ id: targetProjectId, date: pDate.value, address: pAddress.value, name: newName, amount: newAmount, status: newStatus });
-  }
-  
-  if (newStatus === '已收款完成') {
-    let currentPaid = totalReceivedAndDiscount(targetProjectId);
-    let remaining = newAmount - currentPaid;
-    if (remaining > 0) {
-      db.payments.push({ id: uid(), projectId: targetProjectId, amount: remaining, discount: 0, date: pDate.value || today, note: '狀態改為已收款完成自動結清' });
-    }
-  }
-  resetProjectForm();
-  save(true);
-  renderProjects();
-  renderDashboard();
-  alert('工程資料儲存成功！');
-};
-
-document.getElementById('expenseForm').onsubmit = e => {
-  e.preventDefault();
-  db.expenses.push({ id: uid(), projectId: +eProject.value, category: eCategory.value, amount: +eAmount.value, date: eDate.value, note: eNote.value });
-  e.target.reset(); 
-  save(true);
-  renderExpenses();
-  renderDashboard();
-};
-
-document.getElementById('wageForm').onsubmit = e => {
-  e.preventDefault();
-  let personName = wPerson.value.trim();
-  db.wages.push({ 
-    id: uid(), 
-    projectId: +wProject.value, 
-    person: personName, 
-    amount: +wAmount.value, 
-    bonus: +wBonus.value || 0, 
-    date: wDate.value 
-  });
-  e.target.reset(); 
-  save(true);
-  renderWages();
-  renderDashboard();
-};
-
-document.getElementById('paymentForm').onsubmit = e => {
-  e.preventDefault();
-
-  const projectId = +payProject.value;
-  const paymentAmount = +payAmount.value || 0;
-  const discountAmount = +payDiscount.value || 0;
-
-  // 新增收款紀錄
-  db.payments.push({
-    id: uid(),
-    projectId: projectId,
-    amount: paymentAmount,
-    discount: discountAmount,
-    date: payDate.value,
-    note: payNote.value
-  });
-
-  // 找到對應工程
-  const project = db.projects.find(p => p.id == projectId);
-
-  if (project) {
-    // 計算這筆收款加入後，總共已收多少
-    const totalPaid = totalReceivedAndDiscount(projectId);
-
-    // 如果已收款金額 >= 工程總金額
-    // 自動將工程狀態改成「已收款完成」
-    if (totalPaid >= Number(project.amount || 0)) {
-      project.status = '已收款完成';
-    }
-  }
-
-  e.target.reset();
-
-  save(true);
-
-  // 重新整理所有畫面
-  render();
-
-  alert(
-    project && project.status === '已收款完成'
-      ? '收款紀錄已新增！\n此工程款項已全部收清，工程狀態已自動改為「已收款完成」。'
-      : '收款紀錄已成功新增！'
-  );
-};
-
-
-window.onload = () => {
-  render();
-  loadCloudData();
-};
-</script>
-</body>
-</html>
+  document.querySele
