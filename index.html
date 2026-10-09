@@ -2227,11 +2227,10 @@ async function exportQuoteImage() {
     return;
   }
 
-  // iPhone/iPad 上直接下載常會沒有反應，因此先在使用者點擊時開啟新分頁。
   let imageWindow = null;
   try { imageWindow = window.open('', '_blank'); } catch (e) {}
   if (imageWindow) {
-    imageWindow.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>估價單圖片</title></head><body style="margin:0;background:#eee;text-align:center;font-family:Arial,sans-serif"><p style="padding:12px">圖片產生中，完成後可長按圖片儲存。</p></body></html>');
+    imageWindow.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>估價單圖片</title></head><body style="margin:0;background:#fff;font-family:Arial,sans-serif;text-align:center"><p style="padding:12px">正在產生估價單圖片…</p></body></html>');
     imageWindow.document.close();
   }
 
@@ -2242,49 +2241,85 @@ async function exportQuoteImage() {
   try {
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
 
-    const table = quote.querySelector('.quote-table');
-    const captureWidth = Math.max(
-      quote.scrollWidth,
-      table ? table.scrollWidth + 50 : 0,
-      quote.getBoundingClientRect().width
-    );
-
+    // 以 A4 列印版面（約 794px 寬）製作圖片，而不是擷取手機上的畫面排版。
+    const printWidth = 794;
+    let captureHeight = 0;
     const canvas = await html2canvas(quote, {
       scale: 3,
       backgroundColor: '#ffffff',
       useCORS: true,
       logging: false,
-      width: captureWidth,
-      height: quote.scrollHeight,
-      windowWidth: Math.max(document.documentElement.clientWidth, captureWidth),
+      width: printWidth,
+      windowWidth: printWidth,
       onclone: (clonedDoc) => {
         const clonedQuote = clonedDoc.querySelector('.quote-paper');
-        if (clonedQuote) {
-          clonedQuote.style.width = captureWidth + 'px';
-          clonedQuote.style.minWidth = captureWidth + 'px';
-          clonedQuote.style.maxWidth = 'none';
-          clonedQuote.style.margin = '0';
-          clonedQuote.style.borderRadius = '0';
-          clonedQuote.style.boxShadow = 'none';
-          clonedQuote.style.height = 'auto';
-          clonedQuote.style.overflow = 'visible';
+        if (!clonedQuote) return;
 
-          // 將輸入框目前的值複製到畫面副本，避免部分瀏覽器輸出空白。
-          const originalFields = quote.querySelectorAll('input, textarea, select');
-          const clonedFields = clonedQuote.querySelectorAll('input, textarea, select');
-          originalFields.forEach((field, index) => {
-            const copy = clonedFields[index];
-            if (!copy) return;
-            if (field.tagName === 'SELECT') copy.value = field.value;
-            else if (field.type === 'checkbox' || field.type === 'radio') copy.checked = field.checked;
-            else copy.value = field.value;
-          });
-          clonedQuote.querySelectorAll('.no-print, button').forEach(el => { el.style.display = 'none'; });
-          clonedQuote.querySelectorAll('input, textarea, select').forEach(el => {
-            el.style.color = '#000';
-            el.style.webkitTextFillColor = '#000';
-          });
-        }
+        // 圖片匯出直接套用與列印相近的尺寸、字體、欄寬與間距。
+        const printStyle = clonedDoc.createElement('style');
+        printStyle.textContent = `
+          html, body { margin:0 !important; padding:0 !important; background:#fff !important; width:${printWidth}px !important; }
+          .quote-paper {
+            display:block !important; width:${printWidth}px !important; min-width:0 !important; max-width:none !important;
+            margin:0 !important; padding:4px !important; border-radius:0 !important; box-shadow:none !important;
+            height:auto !important; overflow:visible !important; background:#fff !important; color:#000 !important;
+            font-family:Arial,"Noto Sans TC",sans-serif !important;
+          }
+          .quote-paper * { box-sizing:border-box !important; }
+          .quote-paper .no-print, .quote-paper button, .quote-paper .actions { display:none !important; }
+          .quote-header { padding-bottom:3px !important; margin-bottom:5px !important; }
+          .quote-header h2 { font-size:18px !important; color:#000 !important; }
+          .quote-meta { margin-bottom:5px !important; gap:5px !important; }
+          .quote-meta label { font-size:10px !important; margin-bottom:2px !important; }
+          .quote-meta input { font-size:11px !important; padding:4px 6px !important; height:27px !important; }
+          .quote-table { width:100% !important; min-width:100% !important; table-layout:fixed !important; border-collapse:collapse !important; border:1px solid #333 !important; }
+          .quote-table th, .quote-table td { padding:2px 3px !important; font-size:10px !important; height:23px !important; line-height:1.1 !important; color:#000 !important; border-color:#333 !important; overflow:hidden !important; }
+          .quote-table input, .quote-table textarea, .quote-table select { font-size:10px !important; height:19px !important; line-height:1.1 !important; padding:0 2px !important; max-width:100% !important; min-width:0 !important; color:#000 !important; -webkit-text-fill-color:#000 !important; background:transparent !important; }
+          .quote-table th:nth-child(7), .quote-table td:nth-child(7) { border-right:1.5px solid #222 !important; border-left:1px solid #333 !important; }
+          .quote-footer-box { padding:5px 7px !important; font-size:9px !important; line-height:1.25 !important; color:#000 !important; }
+          .quote-footer-row { gap:6px !important; }
+          .quote-agent { min-width:160px !important; gap:3px !important; }
+          .quote-summary-table { margin-top:5px !important; width:100% !important; }
+          .quote-summary-table td { padding:4px !important; font-size:10px !important; color:#000 !important; }
+          .quote-paper input, .quote-paper textarea, .quote-paper select { color:#000 !important; -webkit-text-fill-color:#000 !important; }
+          #qDate { display:none !important; }
+          .print-only-date { display:inline-block !important; font-size:11px !important; padding:4px 0 !important; }
+        `;
+        clonedDoc.head.appendChild(printStyle);
+
+        clonedQuote.style.width = printWidth + 'px';
+        clonedQuote.style.minWidth = '0';
+        clonedQuote.style.maxWidth = 'none';
+        clonedQuote.style.margin = '0';
+        clonedQuote.style.padding = '4px';
+        clonedQuote.style.borderRadius = '0';
+        clonedQuote.style.boxShadow = 'none';
+        clonedQuote.style.height = 'auto';
+        clonedQuote.style.overflow = 'visible';
+
+        // 複製所有輸入欄位目前顯示的值，讓圖片與列印內容一致。
+        const originalFields = quote.querySelectorAll('input, textarea, select');
+        const clonedFields = clonedQuote.querySelectorAll('input, textarea, select');
+        originalFields.forEach((field, index) => {
+          const copy = clonedFields[index];
+          if (!copy) return;
+          if (field.tagName === 'SELECT') copy.value = field.value;
+          else if (field.type === 'checkbox' || field.type === 'radio') copy.checked = field.checked;
+          else copy.value = field.value;
+        });
+
+        // 只截取估價單本身實際高度，避免圖片底部留下大片空白。
+        clonedDoc.body.style.width = printWidth + 'px';
+        clonedDoc.body.style.margin = '0';
+        clonedDoc.body.style.padding = '0';
+        clonedDoc.documentElement.style.width = printWidth + 'px';
+        clonedDoc.documentElement.style.margin = '0';
+        clonedDoc.documentElement.style.padding = '0';
+        clonedQuote.style.display = 'flow-root';
+        clonedQuote.style.position = 'relative';
+        clonedQuote.style.marginBottom = '0';
+        clonedQuote.style.paddingBottom = '4px';
+        captureHeight = Math.ceil(clonedQuote.scrollHeight);
       }
     });
 
@@ -2298,8 +2333,8 @@ async function exportQuoteImage() {
       imageWindow.document.open();
       imageWindow.document.write(
         '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>估價單圖片</title></head>' +
-        '<body style="margin:0;background:#eee;text-align:center;font-family:Arial,sans-serif">' +
-        '<div style="padding:10px;background:#fff;position:sticky;top:0">估價單圖片已產生：長按圖片即可儲存</div>' +
+        '<body style="margin:0;background:#fff;font-family:Arial,sans-serif">' +
+        '<div style="padding:10px;text-align:center;background:#f7f7f7">圖片已產生，長按圖片即可儲存</div>' +
         `<img src="${dataUrl}" alt="估價單" style="display:block;width:100%;height:auto;margin:0 auto;background:#fff">` +
         '</body></html>'
       );
@@ -2312,7 +2347,6 @@ async function exportQuoteImage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      alert('估價單圖片已產生；若沒有自動下載，請允許瀏覽器下載檔案後再試一次。');
     }
   } catch (err) {
     console.error('估價單圖片匯出失敗：', err);
