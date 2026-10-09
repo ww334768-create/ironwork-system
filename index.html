@@ -285,7 +285,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
         <input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
       </div>
     </div>
-    
+
     <div class="section" style="margin-top:0">
       <h2>📅 本月即時結算 (<span id="currentMonthLabel"></span>)</h2>
       <div class="cards" id="monthCards"></div>
@@ -320,7 +320,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
       <div class="quote-header">
         <h2>工程估價單</h2>
       </div>
-      
+
       <div class="quote-meta">
         <div style="flex:1;min-width:160px;">
           <label>日期：</label>
@@ -769,7 +769,7 @@ async function loadCloudData() {
 function save(immediately = false) {
   localStorage.setItem(KEY, JSON.stringify(db));
   const statusEl = document.getElementById('syncText');
-  
+
   if (immediately) {
     syncToCloudNow();
   } else {
@@ -1041,7 +1041,7 @@ function renderQuote() {
 
   const tbody = document.getElementById('quoteItems');
   tbody.innerHTML = '';
-  
+
   let items = q.items || [];
   let displayCount = Math.max(10, items.length);
 
@@ -1263,7 +1263,7 @@ function renderQuoteHistory() {
 function convertToProject() {
   syncCurrentQuoteFromForm();
   let totalAmount = (db.activeQuote.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
-  
+
   if (totalAmount === 0) {
     let manualCheck = prompt('目前估價單總金額為 0，請確認總金額：', '0');
     if (manualCheck !== null) totalAmount = parseFloat(manualCheck) || 0;
@@ -1301,7 +1301,7 @@ function render() {
 
 function renderSelects() {
   let sortedProjects = sortByDateDesc(db.projects);
-  
+
   ['eProject', 'wProject'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
@@ -1396,7 +1396,7 @@ function renderDashboard() {
   }
 
   const totalProjectsAmount = filteredProjects.reduce((s, p) => s + Number(p.amount || 0), 0);
-  
+
   let filteredExpenses = currentSelectedYear === 'all' ? db.expenses : db.expenses.filter(x => x.date && (parseInt(x.date.split('-')[0]) - 1911) == parseInt(currentSelectedYear));
   let filteredWages = currentSelectedYear === 'all' ? db.wages : db.wages.filter(x => x.date && (parseInt(x.date.split('-')[0]) - 1911) == parseInt(currentSelectedYear));
   let filteredPayments = currentSelectedYear === 'all' ? db.payments : db.payments.filter(x => x.date && (parseInt(x.date.split('-')[0]) - 1911) == parseInt(currentSelectedYear));
@@ -1404,7 +1404,7 @@ function renderDashboard() {
   const totalExp = sum(filteredExpenses);
   const totalWages = sum(filteredWages);
   const totalPaid = sum(filteredPayments);
-  
+
   const totalRemain = filteredProjects.reduce((s, p) => s + totals(p).remain, 0);
   const totalProjectProfit = totalProjectsAmount - totalExp - totalWages;
   const totalNetProfit = totalPaid - totalExp - totalWages;
@@ -1503,7 +1503,7 @@ function renderExpenses() {
     let recordMatch = records.some(e => `${e.date || ''} ${e.category || ''} ${e.note || ''} ${e.amount || ''}`.toLowerCase().includes(search));
     return projectText.includes(search) || recordMatch;
   });
-  
+
   if (projectsWithExpenses.length === 0) {
     container.innerHTML = '<div class="empty">尚無支出紀錄</div>';
     return;
@@ -1516,7 +1516,7 @@ function renderExpenses() {
   });
 
   let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>支出筆數</th><th>總金額</th><th>展開明細</th></tr>`;
-  
+
   projectsWithExpenses.forEach(p => {
     let pExpenses = sortByDateDesc(db.expenses.filter(e => {
       if (e.projectId != p.id) return false;
@@ -1604,7 +1604,7 @@ function renderWages() {
     let recordMatch = records.some(w => `${w.date || ''} ${w.person || ''} ${w.name || ''} ${w.amount || ''} ${w.bonus || ''}`.toLowerCase().includes(search));
     return projectText.includes(search) || recordMatch;
   });
-  
+
   if (projectsWithWages.length === 0) {
     container.innerHTML = '<div class="empty">尚無工資紀錄</div>';
     return;
@@ -1617,7 +1617,7 @@ function renderWages() {
   });
 
   let html = `<div class="table-responsive"><table><tr><th>工程名稱</th><th>工資筆數</th><th>總金額</th><th>展開明細</th></tr>`;
-  
+
   projectsWithWages.forEach(p => {
     let pWages = sortByDateDesc(db.wages.filter(w => {
       if (w.projectId != p.id) return false;
@@ -1750,7 +1750,7 @@ function renderSalaryPage() {
 
   let monthBonusKey = `${currentSalaryYear}-${currentSalaryMonth}`;
   let currentMonthBonus = (db.monthBonuses && db.monthBonuses[monthBonusKey]) !== undefined ? db.monthBonuses[monthBonusKey] : 0;
-  
+
   let monthBonusInputEl = document.getElementById('monthBonusInput');
   if (monthBonusInputEl) monthBonusInputEl.value = currentMonthBonus || '';
 
@@ -1818,7 +1818,7 @@ function renderSalaryPage() {
     totalSalarySum += effectiveSalary;
 
     let colorStyle = isRed ? 'color: red; font-weight: bold;' : 'color: #333;';
-    
+
     let rowHighlightClass = '';
     if (record.selfWork) {
       rowHighlightClass = 'salary-row-highlight';
@@ -1868,7 +1868,7 @@ function renderSalaryPage() {
 
             <input type="checkbox" id="off_${dateKey}" ${isOff} onchange="updateSalaryData('${dateKey}')" style="width:18px; height:18px; cursor:pointer;" />
             <label for="off_${dateKey}" style="margin:0; font-weight:normal; cursor:pointer; font-size:12px; color:#6b7280;">休假</label>
-            
+
             <span style="${colorStyle}">${currentSalaryYear}年${currentSalaryMonth}月${d}日</span>
           </div>
         </td>
@@ -1892,7 +1892,7 @@ function renderSalaryPage() {
         <tbody>
           ${rowsHtml}
         </tbody>
-        
+
       </table>
     </div>
   `;
@@ -1966,11 +1966,11 @@ function updateMonthBonus() {
 function editSalaryRow(dateKey) {
   if (!db.salaryEditingState) db.salaryEditingState = {};
   db.salaryEditingState[dateKey] = true;
-  
+
   let record = (db.salaryRecords && db.salaryRecords[dateKey]) || { salary: '', off: false, selfWork: false };
   let sVal = record.salary;
   let cell = document.getElementById(`cell_sal_${dateKey}`);
-  
+
   if (cell) {
     let optionsHtml = `<option value="" ${sVal === '' || sVal === undefined || sVal === null ? 'selected' : ''}>請選擇金額</option>`;
     db.salaryAmounts.forEach(amt => {
@@ -2005,7 +2005,7 @@ function saveSalaryRow(dateKey) {
   db.salaryEditingState[dateKey] = false;
 
   save();
-  
+
   let cell = document.getElementById(`cell_sal_${dateKey}`);
   if (cell) {
     let displayAmountText = (isOff || isSelfWork) ? '$0' : (salaryVal !== '' ? ('$' + Number(salaryVal).toLocaleString()) : '$0');
@@ -2025,10 +2025,10 @@ function updateSalaryData(dateKey) {
 
   let isOff = offEl ? offEl.checked : false;
   let isSelfWork = selfEl ? selfEl.checked : false;
-  
+
   if (!db.salaryRecords) db.salaryRecords = {};
   let existing = db.salaryRecords[dateKey] || { salary: '' };
-  
+
   let salaryVal = (isOff || isSelfWork) ? 0 : existing.salary;
   db.salaryRecords[dateKey] = { salary: salaryVal, off: isOff, selfWork: isSelfWork };
 
@@ -2171,13 +2171,13 @@ document.getElementById('projectForm').onsubmit = e => {
   let newAmount = +pAmount.value;
   let newStatus = pStatus.value;
   let targetProjectId;
-  
+
   let duplicate = db.projects.find(p => p.name.trim() === newName && p.id != editId);
   if (duplicate) {
     alert(`⚠️ 錯誤：系統中已經存在名為「${newName}」的工程，客戶／工程名稱不可重複！請修改名稱後再試。`);
     return;
   }
-  
+
   if (editId) {
     let p = db.projects.find(x => x.id == editId);
     if (p) {
@@ -2188,7 +2188,7 @@ document.getElementById('projectForm').onsubmit = e => {
     targetProjectId = uid();
     db.projects.push({ id: targetProjectId, date: pDate.value, address: pAddress.value, name: newName, amount: newAmount, status: newStatus });
   }
-  
+
   if (newStatus === '已收款完成') {
     let currentPaid = totalReceivedAndDiscount(targetProjectId);
     let remaining = newAmount - currentPaid;
