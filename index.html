@@ -169,6 +169,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   }
 }
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <header>
@@ -341,6 +342,7 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
       <div class="actions no-print" style="margin-top:20px;justify-content:center">
         <button class="primary" style="padding:12px 24px;font-size:16px" onclick="saveCurrentQuote()">💾 儲存估價單數據</button>
         <button class="primary" style="padding:12px 24px;font-size:16px;background:#173b63" onclick="window.print()">🖨️ 轉 PDF / 列印估價單</button>
+        <button class="primary" style="padding:12px 24px;font-size:16px;background:#b83280" onclick="exportQuoteImage()">🖼️ 匯出估價單圖片</button>
         <button class="secondary" style="padding:12px 24px;font-size:16px;background:#059669" onclick="convertToProject()">🏗️ 帶入轉為工程單</button>
       </div>
     </div>
@@ -2194,6 +2196,60 @@ window.onload = () => {
   render();
   loadCloudData();
 };
+
+async function exportQuoteImage() {
+  const quote = document.querySelector('.quote-paper');
+  if (!quote) {
+    alert('找不到估價單內容，請先開啟估價單。');
+    return;
+  }
+  if (typeof html2canvas === 'undefined') {
+    alert('圖片匯出元件載入失敗，請確認網路連線後重新整理頁面。');
+    return;
+  }
+
+  const btn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('匯出估價單圖片'));
+  const oldText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 正在產生圖片…'; }
+
+  try {
+    const canvas = await html2canvas(quote, {
+      scale: 3,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+      width: quote.scrollWidth,
+      height: quote.scrollHeight,
+      windowWidth: Math.max(document.documentElement.clientWidth, quote.scrollWidth),
+      onclone: (clonedDoc) => {
+        const clonedQuote = clonedDoc.querySelector('.quote-paper');
+        if (clonedQuote) {
+          clonedQuote.style.width = quote.scrollWidth + 'px';
+          clonedQuote.style.maxWidth = 'none';
+          clonedQuote.style.margin = '0';
+          clonedQuote.style.borderRadius = '0';
+          clonedQuote.style.boxShadow = 'none';
+          clonedQuote.style.height = 'auto';
+          clonedQuote.style.overflow = 'visible';
+          clonedQuote.querySelectorAll('.no-print').forEach(el => { el.style.display = 'none'; });
+        }
+      }
+    });
+
+    const link = document.createElement('a');
+    const date = new Date();
+    const dateText = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`;
+    link.download = `估價單_${dateText}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    console.error('估價單圖片匯出失敗：', err);
+    alert('圖片匯出失敗，請重新整理後再試一次。');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldText; }
+  }
+}
+
 </script>
 </body>
 </html>
