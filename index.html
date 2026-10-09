@@ -73,6 +73,15 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 .quote-table{width:100%;min-width:750px;border-collapse:collapse;margin-bottom:0;table-layout:fixed}
 .quote-table th,.quote-table td{border:1px solid #d1d5db;padding:6px 4px;text-align:center;font-size:14px;height:36px;white-space:nowrap;overflow:hidden}
 .quote-table input{border:1px solid transparent;background:transparent;padding:4px;text-align:center;width:100%;font-size:14px;height:100%;border-radius:4px}
+
+/* 數量、單價、金額欄位：輸入內容靠右，表頭維持置中 */
+#quoteItems td:nth-child(4) input,
+#quoteItems td:nth-child(6) input,
+#quoteItems td:nth-child(7) input {
+  text-align: right !important;
+  padding-right: 8px !important;
+}
+
 .quote-table input:focus{border-color:#173b63;background:#fff}
 .print-only-date{display:none}
 
@@ -2204,8 +2213,16 @@ async function exportQuoteImage() {
     return;
   }
   if (typeof html2canvas === 'undefined') {
-    alert('圖片匯出元件載入失敗，請確認網路連線後重新整理頁面。');
+    alert('圖片轉換元件尚未載入。請確認網路連線後重新整理頁面，再試一次。');
     return;
+  }
+
+  // iPhone/iPad 上直接下載常會沒有反應，因此先在使用者點擊時開啟新分頁。
+  let imageWindow = null;
+  try { imageWindow = window.open('', '_blank'); } catch (e) {}
+  if (imageWindow) {
+    imageWindow.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>估價單圖片</title></head><body style="margin:0;background:#eee;text-align:center;font-family:Arial,sans-serif"><p style="padding:12px">圖片產生中，完成後可長按圖片儲存。</p></body></html>');
+    imageWindow.document.close();
   }
 
   const btn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('匯出估價單圖片'));
@@ -2213,38 +2230,84 @@ async function exportQuoteImage() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 正在產生圖片…'; }
 
   try {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+    const table = quote.querySelector('.quote-table');
+    const captureWidth = Math.max(
+      quote.scrollWidth,
+      table ? table.scrollWidth + 50 : 0,
+      quote.getBoundingClientRect().width
+    );
+
     const canvas = await html2canvas(quote, {
       scale: 3,
       backgroundColor: '#ffffff',
       useCORS: true,
       logging: false,
-      width: quote.scrollWidth,
+      width: captureWidth,
       height: quote.scrollHeight,
-      windowWidth: Math.max(document.documentElement.clientWidth, quote.scrollWidth),
+      windowWidth: Math.max(document.documentElement.clientWidth, captureWidth),
       onclone: (clonedDoc) => {
         const clonedQuote = clonedDoc.querySelector('.quote-paper');
         if (clonedQuote) {
-          clonedQuote.style.width = quote.scrollWidth + 'px';
+          clonedQuote.style.width = captureWidth + 'px';
+          clonedQuote.style.minWidth = captureWidth + 'px';
           clonedQuote.style.maxWidth = 'none';
           clonedQuote.style.margin = '0';
           clonedQuote.style.borderRadius = '0';
           clonedQuote.style.boxShadow = 'none';
           clonedQuote.style.height = 'auto';
           clonedQuote.style.overflow = 'visible';
-          clonedQuote.querySelectorAll('.no-print').forEach(el => { el.style.display = 'none'; });
+
+          // 將輸入框目前的值複製到畫面副本，避免部分瀏覽器輸出空白。
+          const originalFields = quote.querySelectorAll('input, textarea, select');
+          const clonedFields = clonedQuote.querySelectorAll('input, textarea, select');
+          originalFields.forEach((field, index) => {
+            const copy = clonedFields[index];
+            if (!copy) return;
+            if (field.tagName === 'SELECT') copy.value = field.value;
+            else if (field.type === 'checkbox' || field.type === 'radio') copy.checked = field.checked;
+            else copy.value = field.value;
+          });
+          clonedQuote.querySelectorAll('.no-print, button').forEach(el => { el.style.display = 'none'; });
+          clonedQuote.querySelectorAll('input, textarea, select').forEach(el => {
+            el.style.color = '#000';
+            el.style.webkitTextFillColor = '#000';
+          });
         }
       }
     });
 
-    const link = document.createElement('a');
+    if (!canvas.width || !canvas.height) throw new Error('產生的圖片尺寸為空白');
+
+    const dataUrl = canvas.toDataURL('image/png');
     const date = new Date();
     const dateText = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`;
-    link.download = `估價單_${dateText}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+
+    if (imageWindow && !imageWindow.closed) {
+      imageWindow.document.open();
+      imageWindow.document.write(
+        '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>估價單圖片</title></head>' +
+        '<body style="margin:0;background:#eee;text-align:center;font-family:Arial,sans-serif">' +
+        '<div style="padding:10px;background:#fff;position:sticky;top:0">估價單圖片已產生：長按圖片即可儲存</div>' +
+        `<img src="${dataUrl}" alt="估價單" style="display:block;width:100%;height:auto;margin:0 auto;background:#fff">` +
+        '</body></html>'
+      );
+      imageWindow.document.close();
+    } else {
+      const link = document.createElement('a');
+      link.download = `估價單_${dateText}.png`;
+      link.href = dataUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      alert('估價單圖片已產生；若沒有自動下載，請允許瀏覽器下載檔案後再試一次。');
+    }
   } catch (err) {
     console.error('估價單圖片匯出失敗：', err);
-    alert('圖片匯出失敗，請重新整理後再試一次。');
+    if (imageWindow && !imageWindow.closed) imageWindow.close();
+    alert('圖片匯出失敗。請確認網路連線正常，重新整理系統後再試一次。');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = oldText; }
   }
