@@ -90,6 +90,12 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
   body { background: white; -webkit-print-color-adjust: exact; }
+
+  /* 列印估價單時，將估價單內所有文字統一改為純黑色，提升列印清晰度 */
+  .quote-paper,
+  .quote-paper * {
+    color: #000 !important;
+  }
   .quote-paper { box-shadow: none; padding: 4px; margin: 0; width: 100%; max-width: 100%; page-break-inside: avoid; border-radius: 0; }
   .quote-header { padding-bottom: 3px; margin-bottom: 5px; }
   .quote-header h2 { font-size: 18px; }
@@ -907,7 +913,7 @@ function renderQuote() {
   document.getElementById('qAgent').value = q.agent || '';
   document.getElementById('qPhone').value = q.phone || '';
   document.getElementById('qNote').value = q.note || '';
-  document.getElementById('qNoteAmount').value = q.noteAmount || '';
+  document.getElementById('qNoteAmount').value = formatQuoteNoteAmount(q.noteAmount || '');
   document.getElementById('qValidDays').value = q.validDays || 7;
   document.getElementById('qDepositPercent').value = q.depositPercent || 3;
 
@@ -1033,6 +1039,23 @@ function saveCurrentQuote() {
   alert('估價單已成功儲存至歷史紀錄！');
 }
 
+function formatQuoteNoteAmount(value) {
+  const raw = String(value ?? '').replace(/[$,，\s]/g, '');
+  if (raw === '') return '';
+  const number = Number(raw);
+  return Number.isFinite(number) ? '$' + number.toLocaleString('zh-TW') : String(value);
+}
+
+// 備註旁的金額欄位：輸入時方便編輯，離開欄位後自動套用 $ 與千分位格式
+const qNoteAmountInput = document.getElementById('qNoteAmount');
+qNoteAmountInput.addEventListener('focus', () => {
+  qNoteAmountInput.value = qNoteAmountInput.value.replace(/[$,，\s]/g, '');
+});
+qNoteAmountInput.addEventListener('blur', () => {
+  qNoteAmountInput.value = formatQuoteNoteAmount(qNoteAmountInput.value);
+  syncCurrentQuoteFromForm();
+});
+
 function syncCurrentQuoteFromForm() {
   db.activeQuote.date = document.getElementById('qDate').value;
   db.activeQuote.address = document.getElementById('qAddress').value;
@@ -1040,7 +1063,7 @@ function syncCurrentQuoteFromForm() {
   db.activeQuote.agent = document.getElementById('qAgent').value;
   db.activeQuote.phone = document.getElementById('qPhone').value;
   db.activeQuote.note = document.getElementById('qNote').value;
-  db.activeQuote.noteAmount = document.getElementById('qNoteAmount').value;
+  db.activeQuote.noteAmount = document.getElementById('qNoteAmount').value.replace(/[$,，\s]/g, '');
   db.activeQuote.validDays = document.getElementById('qValidDays').value;
   db.activeQuote.depositPercent = document.getElementById('qDepositPercent').value;
 }
