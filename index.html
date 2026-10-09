@@ -86,16 +86,37 @@ td.wrap-col{white-space:normal;min-width:180px;max-width:280px;word-break:break-
 
 @media (max-width:600px){#salaryYearSummary{grid-template-columns:1fr!important}}
 @media print {
+  /* 列印時放大估價單格內文字，並限制在格子範圍內 */
+  .quote-paper .quote-table th,
+  .quote-paper .quote-table td {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    overflow: hidden !important;
+  }
+  .quote-paper .quote-table input,
+  .quote-paper .quote-table textarea,
+  .quote-paper .quote-table select {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .quote-paper .quote-summary-table td,
+  .quote-paper .quote-footer-box,
+  .quote-paper .quote-footer-box input,
+  .quote-paper .quote-footer-box textarea {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
   @page { size: A4 portrait; margin: 6mm 5mm; }
   header, nav, .actions, .sync-status, .no-print, button, .danger, .section { display: none !important; }
   main { padding: 0; margin: 0; max-width: 100%; }
   body { background: white; -webkit-print-color-adjust: exact; }
-
-  /* 列印估價單時，將估價單內所有文字統一改為純黑色，提升列印清晰度 */
-  .quote-paper,
-  .quote-paper * {
-    color: #000 !important;
-  }
   .quote-paper { box-shadow: none; padding: 4px; margin: 0; width: 100%; max-width: 100%; page-break-inside: avoid; border-radius: 0; }
   .quote-header { padding-bottom: 3px; margin-bottom: 5px; }
   .quote-header h2 { font-size: 18px; }
