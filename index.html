@@ -2385,7 +2385,19 @@ async function exportQuoteImage() {
           #qAddress, #qNote, #qNoteAmount { border:0 !important; outline:0 !important; box-shadow:none !important; background:transparent !important; }    
           #qNote { visibility:hidden !important; color:transparent !important; -webkit-text-fill-color:transparent !important; }    
           #qAddress::placeholder, #qNote::placeholder, #qNoteAmount::placeholder { color:transparent !important; -webkit-text-fill-color:transparent !important; }    
-          #qNoteAmount { visibility:visible !important; color:#d00000 !important; -webkit-text-fill-color:#d00000 !important; font-size:15px !important; font-weight:bold !important; text-align:right !important; }    
+          #qNoteAmount {
+  visibility: visible !important;
+  color: #d00000 !important;
+  -webkit-text-fill-color: #d00000 !important;
+  font-family: Arial, "Noto Sans TC", sans-serif !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+  letter-spacing: normal !important;
+  text-align: right !important;
+  font-variant-numeric: normal !important;
+  transform: none !important;
+}    
           #qNoteAmount:placeholder-shown { color:transparent !important; -webkit-text-fill-color:transparent !important; }    
           /* 七成/三成欄位不畫外框，放寬文字空間避免數字被切掉。 */    
           #qValidDays, #qDepositPercent { font-size:13px !important; border:0 !important; outline:0 !important; box-shadow:none !important; background:transparent !important; width:30px !important; min-width:30px !important; padding:0 !important; margin:0 2px !important; height:22px !important; text-align:center !important; color:#000 !important; -webkit-text-fill-color:#000 !important; }    
