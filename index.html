@@ -1736,15 +1736,25 @@ function ensureTaiwanHolidayCalendar(year) {
   } catch (e) { /* 本機快取不可用時，繼續嘗試線上取得 */ }
 
   taiwanHolidayCalendarLoading[year] = true;
-  fetch(`https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`)
+  // 兩個公開來源依序嘗試，避免單一 CDN 暫時失效就沒有國定假日資料。
+  const calendarUrls = [
+    `https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`,
+    `https://raw.githubusercontent.com/ruyut/TaiwanCalendar/master/data/${year}.json`
+  ];
+  const fetchCalendar = (index = 0) => fetch(calendarUrls[index])
     .then(response => {
       if (!response.ok) throw new Error('無法取得台灣行事曆');
       return response.json();
     })
+    .catch(error => {
+      if (index + 1 < calendarUrls.length) return fetchCalendar(index + 1);
+      throw error;
+    });
+  fetchCalendar()
     .then(rows => {
       if (!Array.isArray(rows)) throw new Error('行事曆格式不正確');
       const holidayDates = rows
-        .filter(item => item && item.isHoliday === true && item.date)
+        .filter(item => item && item.date && (item.isHoliday === true || item.isHoliday === 'true' || item.isHoliday === '是' || item.isHoliday === 1))
         .map(item => {
           const raw = String(item.date);
           return raw.length === 8
@@ -1790,19 +1800,12 @@ function renderSalaryPage() {
   ensureTaiwanHolidayCalendar(currentSalaryYear);
   let yearSelect = document.getElementById('salaryYearSelect');            
   if (yearSelect) {            
-    // 年份選單：顯示過去一年至未來十年，並保留已有薪資紀錄的年份。
-    const currentYear = new Date().getFullYear();
-    const yearsSet = new Set();
-    for (let y = currentYear - 1; y <= currentYear + 10; y++) yearsSet.add(y);
-    if (db.salaryRecords && typeof db.salaryRecords === 'object') {
-      Object.keys(db.salaryRecords).forEach(dateKey => {
-        const match = String(dateKey).match(/^(\d{4})-/);
-        if (match) yearsSet.add(Number(match[1]));
-      });
-    }
-    yearsSet.add(Number(currentSalaryYear));
-    const years = Array.from(yearsSet).sort((a, b) => a - b);
-    yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === Number(currentSalaryYear) ? 'selected' : ''}>${y} 年</option>`).join('');            
+    let baseYear = todayDateObj.getFullYear();
+    // 年份選單自動延伸：保留過去年份，並提供未來年份；每年開啟時會依年份載入行事曆。
+    let years = Array.from({length: Math.max(12, baseYear - 2018 + 1)}, (_, i) => baseYear - Math.max(12, baseYear - 2018 + 1) + 1 + i);
+    if (!years.includes(Number(currentSalaryYear))) years.push(Number(currentSalaryYear));
+    years = [...new Set(years)].sort((a, b) => a - b);            
+    yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === currentSalaryYear ? 'selected' : ''}>${y} 年</option>`).join('');            
   }            
             
   let monthContainer = document.getElementById('salaryMonthButtons');            
