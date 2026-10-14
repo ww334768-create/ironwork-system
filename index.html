@@ -1790,8 +1790,19 @@ function renderSalaryPage() {
   ensureTaiwanHolidayCalendar(currentSalaryYear);
   let yearSelect = document.getElementById('salaryYearSelect');            
   if (yearSelect) {            
-    let years = [todayDateObj.getFullYear()-1, todayDateObj.getFullYear(), todayDateObj.getFullYear()+1, todayDateObj.getFullYear()+2];            
-    yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === currentSalaryYear ? 'selected' : ''}>${y} 年</option>`).join('');            
+    // 年份選單：顯示過去一年至未來十年，並保留已有薪資紀錄的年份。
+    const currentYear = new Date().getFullYear();
+    const yearsSet = new Set();
+    for (let y = currentYear - 1; y <= currentYear + 10; y++) yearsSet.add(y);
+    if (db.salaryRecords && typeof db.salaryRecords === 'object') {
+      Object.keys(db.salaryRecords).forEach(dateKey => {
+        const match = String(dateKey).match(/^(\d{4})-/);
+        if (match) yearsSet.add(Number(match[1]));
+      });
+    }
+    yearsSet.add(Number(currentSalaryYear));
+    const years = Array.from(yearsSet).sort((a, b) => a - b);
+    yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === Number(currentSalaryYear) ? 'selected' : ''}>${y} 年</option>`).join('');            
   }            
             
   let monthContainer = document.getElementById('salaryMonthButtons');            
